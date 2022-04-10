@@ -111,6 +111,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
                     instance_dict["speeds"] = []
                     instance_dict["accelerations"] = []
                     instance_dict["runs"] = []
+                    instance_dict["challenges"] = []
                     instance_dict["fish"] = []
 
 
@@ -127,7 +128,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
 
 def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
     '''
-    robot_dir:     directory of robot log files
+    robot_dir:     directory of fish log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
@@ -141,7 +142,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
     if end_date is not None:
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
     
-    # load from robot files
+    # load from fish files
     if dates_dict is None:
         dates_dict = {}
     current_instance = 0
@@ -187,14 +188,13 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                 # print(date)
                 timestamp = f"{split_line[0]} {split_line[1]}"
                 rest = line[28:]
-                # print(json.loads('["foo", {"bar":["baz", null, 1.0, 2]}]'))                
                 
                 # new instance when robot was loaded again
                 if split_line[3] == "Started":
                     current_instance += 1
                     current_instance_line_id = 0
                 else:
-                    # make line json comliant
+                    # make line json compliant
                     rest = rest.replace("\'", "\"")
                     rest = rest.replace("True", "true")
                     rest = rest.replace("False", "false")
@@ -212,6 +212,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     # find corresponding timestamp in existing data and add fish data
                     id_timestamp = find_corresponding_timestamp(instance_dict["timestamps"], timestamp, current_instance_line_id)
                     fish_array = instance_dict.get("fish", [])
+                    
                     #
                     if len(fish_array) == id_timestamp:
                         fish_array.append(rest)

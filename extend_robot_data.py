@@ -53,6 +53,7 @@ def extend_robot_data(dates_dict, ignore_standing_pos):
                 print(f"{date_key} instance {instance_key}: Removed {len(runs) - len(filtered_runs)} short runs from run list. ({len(runs)} - {len(filtered_runs)} = {len(runs) - len(filtered_runs)})")
                 print(f"{date_key} instance {instance_key}: Found {len(filtered_runs)} runs")
                 instance["runs"] = filtered_runs
+                instance["challenges"] = np.zeros(len(filtered_runs), dtype=bool)
 
                 
                 # ignore robot standing still

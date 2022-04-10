@@ -33,18 +33,50 @@ def get_all_positions(dates_dict, adjusted):
     return all_positions
 
 
-def find_corresponding_timestamp(timestamps, timestamp, current_lineid):    
+def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.17):    
     compare_ts = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f')
     
-    if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < 0.17:
+    if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < timedelta:
         return current_lineid
     else:
-        print("no timestamp closer than 0.1 seconds")
-        print(current_lineid, timestamps[current_lineid], timestamp, timestamps)
-        assert False
+        # print(f"timestamp not closer than {timedelta} seconds ({timestamps[current_lineid], timestamp}")
+        # print(current_lineid, timestamps[current_lineid], timestamp, timestamps)
+        return -1
     
     
     
     # time_differences = [np.abs((compare_ts - datetime.strptime(ts, '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) for ts in timestamps]
     # id_min = np.argmin(time_differences)
     # print(id_min)
+    
+def get_fish_pos_per_run(fish_instance, runs):
+    fish_pos_all_runs = []
+    if len(fish_instance) == 0:
+        return []
+    for id_run, run in enumerate(runs):
+        fish_pos_run = []
+        run_fish = fish_instance[run[0]:run[1]]
+
+        # print(np.array(run_fish)[0])
+        
+        for all_fish_in_ts in run_fish:
+            fish_pos_ts = []
+            for fish in all_fish_in_ts:
+                if fish['id'] != 0:
+                    fish_pos_ts.append(fish["position"])
+                    
+            # print(fish_pos_ts[0])
+            fish_pos_run.append(fish_pos_ts)
+
+        fish_pos_all_runs.append(fish_pos_run)
+
+    return fish_pos_all_runs
+
+def get_challenge_runs(runs, challenges):
+    '''
+    both need to be same length
+    '''
+    if len(runs) >0 and len(challenges)>0 and len(runs) == len(challenges):
+        return np.array(runs)[np.array(challenges)]
+    else:
+        return []
