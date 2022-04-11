@@ -33,15 +33,28 @@ def get_all_positions(dates_dict, adjusted):
     return all_positions
 
 
-def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.17):    
+def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.17, checkall=False):    
     compare_ts = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f')
     
-    if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < timedelta:
-        return current_lineid
+    # check full timestamp array; start at current_lineid
+    if checkall:
+        for i in range(current_lineid, len(timestamps)):
+            ts = datetime.strptime(timestamps[i], '%Y-%m-%d %H:%M:%S,%f')
+            delta = np.abs((compare_ts - ts).total_seconds())
+            
+            if delta < timedelta:
+                return i
+            
+        return -1 # not found
+    
+    # check only timestamp at current_lineid
     else:
-        # print(f"timestamp not closer than {timedelta} seconds ({timestamps[current_lineid], timestamp}")
-        # print(current_lineid, timestamps[current_lineid], timestamp, timestamps)
-        return -1
+        if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < timedelta:
+            return current_lineid
+        else:
+            # print(f"timestamp not closer than {timedelta} seconds ({timestamps[current_lineid], timestamp}")
+            # print(current_lineid, timestamps[current_lineid], timestamp, timestamps)
+            return -1
     
     
     

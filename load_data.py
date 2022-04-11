@@ -15,13 +15,12 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
     
     # dates to datetime
     if start_date is not None:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
     if end_date is not None:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
     
     # load from robot files
     dates_dict = {}
-    current_instance = 0
     for id_file_path, file_path in enumerate(file_paths):
         # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
@@ -29,14 +28,33 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
         
         if len(split_file_path) > 1:
             file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
-            file_date = datetime.strptime(file_date, '%Y-%m-%d')
-            if start_date is not None and file_date < start_date:
+            file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
+            if start_date is not None and file_date_dt < start_date_dt:
                 continue
-            if end_date is not None and file_date > end_date:
+            if end_date is not None and file_date_dt > end_date_dt:
                 continue
         else:
             print(f"Skipped {file_path}")
             continue
+        
+        
+        # get dict for this day
+        date = file_date
+        date_dict = dates_dict.get(date, dict())
+        
+        # init arrays for new date_dict 
+        if len(date_dict.keys()) == 0:
+            date_dict["timestamps"] = []
+            date_dict["positions"] = []
+            date_dict["adjusted_positions"] = []
+            date_dict["orientation"] = []
+            date_dict["rotation"] = []
+            date_dict["velocities"] = []
+            date_dict["speeds"] = []
+            date_dict["accelerations"] = []
+            date_dict["runs"] = []
+            date_dict["challenges"] = []
+            date_dict["fish"] = []
         
         
         # load line by line and add to corresponding day
@@ -64,59 +82,38 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
                 timestamp = f"{split_line[0]} {split_line[1]}"
                 rest = line[28:]
 
-                # new instance when robot was loaded again
-                if split_line[3] == "Started":
-                    current_instance += 1
+                # # skip lines without positions
+                # if split_line[3] == "Started":
+                #     continue
 
-                # get dict for this day
-                date_dict = dates_dict.get(date, dict())
-                # get dict for this instance
-                instance_dict = date_dict.get(current_instance, dict())
 
                 if split_line[3] != "Started":
-                    # update instance dict with file data
-                    timestamps = instance_dict.get("timestamps",[])
+                    # update date dict with file data
+                    timestamps = date_dict.get("timestamps",[])
                     timestamps.append(timestamp)
-                    instance_dict["timestamps"] = timestamps
+                    date_dict["timestamps"] = timestamps
 
                     # split rest up into distinct data
                     split_rest = rest.split(', ')
                     # add data to dict
-                    positions = instance_dict.get("positions",[])
+                    positions = date_dict.get("positions",[])
                     position = parse_number_array_from_string(split_rest[0])
                     if len(split_rest) > 0: positions.append(position)
-                    instance_dict["positions"] = positions
+                    date_dict["positions"] = positions
 
-                    orientations = instance_dict.get("orientation",[])
+                    orientations = date_dict.get("orientation",[])
                     if len(split_rest) > 1:
                         orientation = parse_number_array_from_string(split_rest[1])
                         orientations.append(orientation)
-                    instance_dict["orientation"] = orientations
+                    date_dict["orientation"] = orientations
 
-                    rotations = instance_dict.get("rotation",[])
+                    rotations = date_dict.get("rotation",[])
                     if len(split_rest) > 2:
                         rotation = parse_number_array_from_string(split_rest[2])
                         rotations.append(rotation)
-                    instance_dict["rotation"] = rotations
+                    date_dict["rotation"] = rotations
 
-
-                else:
-                    # init arrays for new instance 
-                    instance_dict["timestamps"] = []
-                    instance_dict["positions"] = []
-                    instance_dict["adjusted_positions"] = []
-                    instance_dict["orientation"] = []
-                    instance_dict["rotation"] = []
-                    instance_dict["velocities"] = []
-                    instance_dict["speeds"] = []
-                    instance_dict["accelerations"] = []
-                    instance_dict["runs"] = []
-                    instance_dict["challenges"] = []
-                    instance_dict["fish"] = []
-
-
-                # update instance dict in date_dict
-                date_dict[current_instance] = instance_dict
+                # update date_dict in date_dicts
                 dates_dict[date] = date_dict
 
             file.close()
@@ -144,24 +141,30 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
     
     # load from fish files
     if dates_dict is None:
-        dates_dict = {}
-    current_instance = 0
-    current_instance_line_id = 0
+        dates_dict = dict()
+        
+    current_line_id = 0
     for id_file_path, file_path in enumerate(file_paths):
+        
         # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
         split_file_path = file_name.split(".")
                 
         if len(split_file_path) > 1:
             file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
-            file_date = datetime.strptime(file_date, '%Y-%m-%d')
-            if start_date is not None and file_date < start_date:
+            file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
+            if start_date is not None and file_date_dt < start_date:
                 continue
-            if end_date is not None and file_date > end_date:
+            if end_date is not None and file_date_dt > end_date:
                 continue
         else:
             print(f"Skipped {file_path}")
             continue
+            
+        # get dict for this day
+        date = file_date
+        date_dict = dates_dict.get(date, dict())
+            
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
             print(f"Loading {file_path}...")
@@ -187,31 +190,18 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     print(file_path, id_line, line)
                 # print(date)
                 timestamp = f"{split_line[0]} {split_line[1]}"
-                rest = line[28:]
+                rest = line[28:]           
                 
-                # new instance when robot was loaded again
-                if split_line[3] == "Started":
-                    current_instance += 1
-                    current_instance_line_id = 0
-                else:
+                if split_line[3] != "Started":
                     # make line json compliant
                     rest = rest.replace("\'", "\"")
                     rest = rest.replace("True", "true")
                     rest = rest.replace("False", "false")
-                    rest = json.loads(rest)
-                
-
-                
-                # get dict for this day
-                date_dict = dates_dict.get(date, dict())
-                # get dict for this instance
-                instance_dict = date_dict.get(current_instance, dict()) # TODO are instances for each log type the same?
-                
-                
-                if split_line[3] != "Started":
+                    rest = json.loads(rest)  
+                    
                     # find corresponding timestamp in existing data and add fish data
-                    id_timestamp = find_corresponding_timestamp(instance_dict["timestamps"], timestamp, current_instance_line_id)
-                    fish_array = instance_dict.get("fish", [])
+                    id_timestamp = find_corresponding_timestamp(date_dict["timestamps"], timestamp, current_line_id)
+                    fish_array = date_dict.get("fish", [])
                     
                     #
                     if len(fish_array) == id_timestamp:
@@ -225,9 +215,13 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     else: #if array already exists at this index, overwrite
                         fish_array[id_timestamp] = rest
                     # print(fish_array)
-                    current_instance_line_id += 1
+                    current_line_id += 1
                     
-                    instance_dict["fish"] = fish_array
+                    date_dict["fish"] = fish_array
+                    
+                # update date_dict in date_dicts
+                dates_dict[date] = date_dict
+                
             file.close()    
                 
                 # print(timestamp)
