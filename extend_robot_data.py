@@ -44,8 +44,8 @@ def extend_robot_data(dates_dict, ignore_standing_pos):
             # print(f"{date_key}: Removed {len(runs) - len(filtered_runs)} short runs from run list. ({len(runs)} - {len(filtered_runs)} = {len(runs) - len(filtered_runs)})")
             print(f"{date_key}: Found {len(runs)} runs")
             
-            date_dict["runs"] = runs
-            date_dict["challenges"] = np.zeros(len(runs), dtype=bool) # init challenges for future addition 
+            date_dict["runs_timeskip"] = runs
+            # date_dict["challenges"] = np.zeros(len(runs), dtype=bool) # init challenges for future addition 
 
 
             # ignore robot standing still
@@ -66,7 +66,10 @@ def extend_robot_data(dates_dict, ignore_standing_pos):
                 print(f"{date_key}: {skipped} unchanged positions skipped! ({(skipped/len(positions))*100:.2f}% of all positions)")
 
             # calculate velocities, speeds
-            for id_run, run in enumerate(runs):                
+            runs = date_dict["runs"]
+            for id_run, run in enumerate(runs):
+                if run is None or len(run) != 2:
+                    continue
                 timestamps_run = dt_timestamps[run[0]:run[1]]
                 timedeltas_run = [delta.total_seconds() for delta in np.diff(timestamps_run)]
 

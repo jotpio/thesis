@@ -62,15 +62,13 @@ def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelt
     # id_min = np.argmin(time_differences)
     # print(id_min)
     
-def get_fish_pos_per_run(fish_instance, runs):
+def get_fish_pos_per_run(all_fish_pos, runs):
     fish_pos_all_runs = []
-    if len(fish_instance) == 0:
+    if len(all_fish_pos) == 0:
         return []
     for id_run, run in enumerate(runs):
         fish_pos_run = []
-        run_fish = fish_instance[run[0]:run[1]]
-
-        # print(np.array(run_fish)[0])
+        run_fish = all_fish_pos[run[0]:run[1]]
         
         for all_fish_in_ts in run_fish:
             fish_pos_ts = []
@@ -90,6 +88,8 @@ def get_challenge_runs(runs, challenges):
     both need to be same length
     '''
     if len(runs) >0 and len(challenges)>0 and len(runs) == len(challenges):
-        return np.array(runs)[np.array(challenges)]
+        challenge_runs = np.array(runs)[np.array(challenges)]
+        ids_challenge_runs = np.argwhere(challenges).ravel()
+        return challenge_runs, ids_challenge_runs
     else:
-        return []
+        return [], []

@@ -1,4 +1,4 @@
-import glob, os
+import glob, os, time
 from util import parse_number_array_from_string, find_corresponding_timestamp
 from datetime import datetime
 import json
@@ -19,9 +19,11 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
     if end_date is not None:
         end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
     
+    all_tic = time.time()
     # load from robot files
     dates_dict = {}
     for id_file_path, file_path in enumerate(file_paths):
+        tic = time.time()
         # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
         split_file_path = file_name.split(".")
@@ -59,6 +61,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
         
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
+            print(f"Loading {file_path}...")
             for id_line, line in enumerate(file):
                 # remove \n
                 line = line.replace("\n", "")
@@ -117,9 +120,12 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
                 dates_dict[date] = date_dict
 
             file.close()
+            toc=time.time()
+            print(f"{toc-tic:.4f} seconds elapsed")
 
     print(f"{len(dates_dict.keys())} day(s) loaded!")
-    
+    all_toc=time.time()
+    print(f"Loading robot files took {all_toc-all_tic} seconds")
     return dates_dict
 
 
@@ -143,9 +149,13 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
     if dates_dict is None:
         dates_dict = dict()
         
+    # previous date
+    prev_date = None
+            
+    all_tic = time.time()
     current_line_id = 0
     for id_file_path, file_path in enumerate(file_paths):
-        
+        tic = time.time()
         # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
         split_file_path = file_name.split(".")
@@ -164,6 +174,12 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
         # get dict for this day
         date = file_date
         date_dict = dates_dict.get(date, dict())
+        
+        # finish last run of the previous date
+        if prev_date is not None:
+            if prev_date != date:
+                current_line_id = 0 
+        prev_date = date
             
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
@@ -201,6 +217,10 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     
                     # find corresponding timestamp in existing data and add fish data
                     id_timestamp = find_corresponding_timestamp(date_dict["timestamps"], timestamp, current_line_id)
+                    
+                    if id_timestamp == -1:
+                        print(f"No corresponding timestmap found for {timestamp}")
+                        continue
                     fish_array = date_dict.get("fish", [])
                     
                     #
@@ -213,6 +233,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                             if len(fish_array) == id_timestamp:
                                 fish_array.append(rest)
                     else: #if array already exists at this index, overwrite
+                        print(len(fish_array), id_timestamp)
                         fish_array[id_timestamp] = rest
                     # print(fish_array)
                     current_line_id += 1
@@ -222,8 +243,15 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                 # update date_dict in date_dicts
                 dates_dict[date] = date_dict
                 
-            file.close()    
-                
+            file.close()
+            toc=time.time()
+            print(f"{toc-tic:.4f} seconds elapsed")
+
+    all_toc=time.time()
+    print(f"Loading fish files took {all_toc-all_tic} seconds")            
                 # print(timestamp)
                 # print(type(list(rest)))
     return dates_dict
+
+def load_behavior(behavior_dir, dates_dict=None, start_date=None, end_date=None):
+    pass
