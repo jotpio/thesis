@@ -17,14 +17,13 @@ from matplotlib.backends.backend_tkagg import (
 )
 
 
-
 from datetime import date
 import argparse
 import sys
 import numpy as np
 
 from plot import plot_all_positions, plot_position_hexmap
-from load_data import load_robot_data
+from load_data import load_robot_data, load_fish_data, load_behavior_data
 from extend_robot_data import extend_robot_data
 from util import get_all_positions
 
@@ -80,9 +79,10 @@ class LoadingGUI():
         end_date = self.end_date_cal.get_date().strftime("%Y-%m-%d")
         ignore_standing_pos = self.ignore_standing_pos.get()
         
-        self.dates_dict = load_robot_data(self.robot_dir, start_date, end_date)
+        self.dates_dict = load_robot_data(robot_path, start_date, end_date)
+        self.dates_dict = load_behavior_data(beh_path, self.dates_dict, start_date, end_date)
+        self.dates_dict = load_fish_data(fish_path, self.dates_dict, start_date, end_date)
         self.dates_dict = extend_robot_data(self.dates_dict, ignore_standing_pos)
-
 
     def plot_all_positions(self):
         if self.dates_dict is not None and len(self.dates_dict.keys()) > 0:            
@@ -114,9 +114,10 @@ class LoadingGUI():
 
 
     def plot_loaded_data(self):
-        pos_heatm, plt_allpos = self.load_plot_parameters() # load parameters from checkboxes
+        plt_pos_hexm, plt_allpos = self.load_plot_parameters() # load parameters from checkboxes
   
-        if pos_heatm:
+        if plt_pos_hexm:
+            # create_plot_window()
             # init window
             plot_window = self.openNewWindow()
             
@@ -126,9 +127,9 @@ class LoadingGUI():
             figure = Figure(figsize=(15, 15), dpi=80)
             ax1 = figure.add_subplot(111)
                         
-            #plot in figure    
-            all_pos = get_all_positions(self.dates_dict, self.ignore_standing_pos.get())
-            plot_position_hexmap(all_pos, ax1)
+            #plot in figure
+            pos = get_all_positions(self.dates_dict, challenges=True, successful=True)
+            plot_position_hexmap(pos, ax=None)
 
             # create FigureCanvasTkAgg object
             figure_canvas = FigureCanvasTkAgg(figure, master=top_frame)
@@ -144,27 +145,36 @@ class LoadingGUI():
         if plt_allpos:
             #init window
             plot_window = self.openNewWindow() 
-            
+            top_frame = ttk.Frame(plot_window, padding = (10, 10))
+            top_frame.pack()
             # create a figure
             figure = Figure(figsize=(15, 15), dpi=80)
             ax1 = figure.add_subplot(111)
-            # create FigureCanvasTkAgg object
-            figure_canvas = FigureCanvasTkAgg(figure, master=plot_window)
-            figure_canvas.draw()
-            # figure_canvas.draw()
-            figure_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
             
             
             # plot in figure
-            plot_all_positions(self.dates_dict, start_date=None, end_date=None, ax=ax1)
+            plot_all_positions(self.dates_dict, start_date=None, end_date=None, ax=None)
             
+            # create FigureCanvasTkAgg object
+            figure_canvas = FigureCanvasTkAgg(figure, master=top_frame)
+            # figure_canvas.draw()
+            # figure_canvas.draw()        
+                       
+            
+            # toolbar = NavigationToolbar2Tk(figure_canvas, top_frame)
+            # toolbar.update()
+            figure_canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
 
 
     def load_plot_parameters(self):
-        return self.pos_heatm.get(), self.plt_allpos.get()
+        return self.plt_pos_hexm.get(), self.plt_allpos.get()
 
     def __init__(self, base_dir):
-        
+        '''
+        ################################################################################################################
+                                                            Loading
+        ################################################################################################################
+        '''
             
         # directories
         self.fish_dir=base_dir+"fish"
@@ -225,12 +235,12 @@ class LoadingGUI():
         # date dialog
         start_date_label = Label(self.window,text="Start date:").grid(row=row, column=0)
         self.start_date_cal = DateEntry(self.window, width=12, background='darkblue',
-                            foreground='white', borderwidth=2, year=2022, month=2, day=1)
+                            foreground='white', borderwidth=2, year=2022, month=2, day=2)
         self.start_date_cal.grid(row=row, column=1)
         row += 1
         end_date_label = Label(self.window,text="End date:").grid(row=row, column=0)
         self.end_date_cal = DateEntry(self.window, width=12, background='darkblue',
-                            foreground='white', borderwidth=2, year=2022, month=2, day=2)
+                            foreground='white', borderwidth=2, year=2022, month=2, day=3)
         self.end_date_cal.grid(row=row, column=1)
         row += 1
         
@@ -248,30 +258,34 @@ class LoadingGUI():
         button6 = Button(master=self.window, text="Load data", command=self.load_data, width=40)
         button6.grid(row=row, columnspan=10, pady=5)
         row += 1
-
-
-
+        
         # separator
         separator = ttk.Separator(self.window, orient='horizontal')
         separator.grid(row=row, columnspan=10,sticky="ew", pady=(5, 5))
         row += 1
+        
+        '''
+        ################################################################################################################
+                                                            Plotting
+        ################################################################################################################
+        '''
 
         # all position checkbox
         self.plt_allpos = IntVar()
-        self.plt_allpos_button = Checkbutton(self.window, text="scatter positions", 
+        self.plt_allpos_button = Checkbutton(self.window, text="scatter all positions", 
                                              variable=self.plt_allpos, 
                                              onvalue=1, offvalue=0).grid(row=row, column=0)
         row += 1
 
-        # position heatmap checkbox
-        self.pos_heatm = IntVar()
-        self.pos_hm_cb = Checkbutton(self.window, text='position hexmap',
-                                     variable=self.pos_heatm, 
+        # rotation histogram position heatmap checkbox
+        self.plt_pos_hexm = IntVar()
+        self.pos_hm_cb = Checkbutton(self.window, text='all position hexmap',
+                                     variable=self.plt_pos_hexm, 
                                      onvalue=1, offvalue=0).grid(row=row, column=0)
         row += 1
 
         # button that displays the plot
-        plot_button = Button(master=self.window, width=20, text="Plot", command=self.plot_loaded_data)
+        plot_button = Button(master=self.window, width=20, text="Generate Plots", command=self.plot_loaded_data)
         plot_button.grid(row=row, column=0)
         row += 1
 
@@ -280,7 +294,7 @@ class LoadingGUI():
         
 if __name__ == '__main__':
     # Execute when the module is not initialized from an import statement.
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser(description='Load Humboldt-Forum data')
     parser.add_argument('--base_dir', '-b', required=True,
                     help='path containing all other log directories')
 
