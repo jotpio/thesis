@@ -1,8 +1,9 @@
-import re
+import os, re
 import numpy as np
 from datetime import datetime 
 import glob
 
+from datetime import date
 
 def parse_number_array_from_string(string):
     pattern = r"([-+]?\d*\.\d*)" # match unsigned or signed floating point numbers
@@ -34,7 +35,7 @@ def get_all_positions(dates_dict, challenges=False, successful=False):
     return all_positions
 
 
-def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.17, checkall=False):    
+def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.19, checkall=False):    
     compare_ts = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f')
     
     # check full timestamp array; start at current_lineid
@@ -129,7 +130,17 @@ def save_dates_to_npz(dates_dict):
         
 def load_dates_from_npz(start_date, end_date):
     # load dates from npy files
-    date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
+    print("Loading data from npz files.....")
+    current_working_dir = os.getcwd()
+    current_dirname = os.path.basename(current_working_dir)
+    if current_dirname == 'streamlit':
+        date_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
+    elif current_dirname == 'thesis':
+        date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
+    else:
+        print("Could not find loaded data in current working directory!")
+        return None
+    print(f"Date files {date_files}")
     dates_dict = dict()
     for date_file in date_files:
         date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
@@ -144,3 +155,152 @@ def load_dates_from_npz(start_date, end_date):
     print(f"Loading done!")
     
     return dates_dict
+
+def ignore_standing_pos(positions, date_key):
+    # ignore robot standing still
+            
+    old_pos = [0,0]
+    skipped = 0
+    adjusted_positions = []
+
+    # compare each pos to previous pos and skip if basically unchanged
+    for pos in positions:
+        if distance(pos, old_pos) < 0.1:
+            skipped += 1
+        else:
+            adjusted_positions.append(pos)
+        old_pos = pos
+    print(f"{date_key}: {skipped} unchanged positions skipped! ({(skipped/len(positions))*100:.2f}% of all positions)")
+    
+    return adjusted_positions
+
+def calculate_velocity_speed_acceleration(date_dict):
+    # calculate velocities, speeds. run_length
+    runs = date_dict["runs"]
+    timestamps = date_dict["timestamps"]
+    dt_timestamps = [datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f') for timestamp in timestamps]
+    
+    runs_velocities = []
+    runs_speeds = []
+    runs_accelerations = []
+    for id_run, run in enumerate(runs):
+        if run is None or len(run) != 2:
+            continue
+        # calc valocity, speed and acceleration for this run
+        velocity_vectors_run, speed_run, acceleration_run = calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps)
+        
+        # add results
+        runs_velocities.append(velocity_vectors_run)
+        runs_speeds.append(speed_run)
+        runs_accelerations.append(acceleration_run)
+        
+    return runs_velocities, runs_speeds, runs_accelerations
+
+def calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps):
+    # timestamp deltas for velocity and speed
+    timestamps_run = dt_timestamps[run[0]:run[1]]
+    timedeltas_run = [delta.total_seconds() for delta in np.diff(timestamps_run)]
+
+    posxdeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1],0])
+    posydeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1],1])
+
+    velocity_x_run = posxdeltas_run / timedeltas_run
+    velocity_y_run = posydeltas_run / timedeltas_run
+
+    velocity_vectors_run = list(zip(velocity_x_run, velocity_y_run))
+    speed_run = np.linalg.norm(velocity_vectors_run, axis=1) # magnitude of velocity vector is speed
+
+    acceleration_run = np.diff(speed_run)
+    
+    return velocity_vectors_run, speed_run, acceleration_run
+
+
+def get_hours_minutes_seconds_from_decimal_hours(dec_hours):
+    hours = int(dec_hours)
+    minutes = int((dec_hours*60) % 60)
+    seconds = int((dec_hours*3600) % 60)
+    return hours, minutes, seconds
+
+def get_number_of_days(start_date, end_date):
+    '''
+        Returns total number of days in selected timeframe 
+    '''
+    # print(start_date, end_date)
+    d0 = datetime.strptime(start_date, '%Y-%m-%d')
+    d1 = datetime.strptime(end_date, '%Y-%m-%d')
+    delta = d1 - d0
+    return delta.days + 1
+
+def get_number_of_runs(dates_dict, start_date, end_date, successful=False, challenges=False):
+    '''
+        Returns total number of runs in selected timeframe 
+    '''
+    number_of_runs = 0
+    
+    dates_keys = dates_dict.keys()
+    for date_key in dates_keys:
+        date_dict = dates_dict[date_key]
+        
+        if successful:
+            runs, _ = get_challenge_runs(date_dict["runs"], date_dict["successful"])
+        elif challenges:
+            runs, _ = get_challenge_runs(date_dict["runs"], date_dict["challenges"])
+        else:
+            runs = date_dict["runs"]
+            
+        number_of_runs += len(runs)
+        
+    return number_of_runs
+
+def get_date_run_tuples(dates_dict, successful, challenges):
+    '''
+        Returns list of date-run tuples for each run in selected timeframe 
+    '''
+    date_run_tuples = []
+    
+    dates_keys = dates_dict.keys()
+    for date_key in dates_keys:
+        date_dict = dates_dict[date_key]
+        
+        if successful:
+            runs, ids_runs = get_challenge_runs(date_dict["runs"], date_dict["successful"])
+        elif challenges:
+            runs, ids_runs = get_challenge_runs(date_dict["runs"], date_dict["challenges"])
+        else:
+            runs = date_dict["runs"]
+            ids_runs = list(range(len(runs)))
+        #combine date and run id to tuples and add to list
+        for id_run in ids_runs:
+            date_run_tuples.append((date_key, id_run))
+    
+    return date_run_tuples
+        
+
+def get_use_time(dates_dict,start_date, end_date):
+    '''
+        Returns total use time in selected timeframe 
+    '''
+    total_use_time = 0
+    
+    dates_keys = dates_dict.keys()
+    for date_key in dates_keys:
+        date_dict = dates_dict[date_key]
+        date_run_lengths = date_dict["run_lengths"]
+        total_use_time += np.sum(date_run_lengths)/60/60
+        
+    return total_use_time
+    
+    
+def get_number_of_frames(dates_dict, start_date, end_date):
+    '''
+        Returns total number of frames in selected timeframe 
+    '''
+    total_number_of_frames = 0
+    
+    dates_keys = dates_dict.keys()
+    for date_key in dates_keys:
+        date_dict = dates_dict[date_key]
+        date_number_of_timestamps = len(date_dict["timestamps"])
+        total_number_of_frames += date_number_of_timestamps
+        
+    return total_number_of_frames

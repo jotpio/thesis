@@ -2,20 +2,22 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import numpy as np
 
-from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal
+from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal, calculate_run_velocity_speed_acceleration
 
 
-def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, challenges=True, only_successful=True):
+def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, challenges=True, only_successful=True, show=True, size=(10,10)):
     # plot all positions
     all_positions = []
     dates_keys = dates_dict.keys()
+    
+    if start_date is not None:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date is not None:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
         # print(date_key)
-        if start_date is not None:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-        if end_date is not None:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
         date = datetime.strptime(date_key, '%Y-%m-%d')
 
         if start_date is not None and start_date > date:
@@ -46,8 +48,10 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
         y = np.array(all_positions)[:,1]
         
         if ax is None:
-            fig=plt.figure(num="all positions", figsize=(16,16))
+            fig=plt.figure(num="all positions", figsize=size)
             ax = fig.add_subplot(111)
+        else:
+            fig=ax.get_figure()
         
         ax.set_xlim(2000)
         ax.set_ylim(2000)
@@ -56,25 +60,84 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
         # plt.gca().invert_yaxis()
         ax.scatter(x,y,s=2)
         # plt.plot(x, y)
-        ax.set_title(f"all positions: {date_key[0]} - {date_key[-1]}")
+        ax.set_title(f"all positions: {start_date.strftime('%Y-%m-%d')}  -  {end_date.strftime('%Y-%m-%d')}")
+        
+        if show:
+            plt.show()
+        
+        return fig
+
+def plot_run(date_dict, id_run, date_key, show=True):
+    fig = plt.figure(num=date_key, figsize=(16,9))
+    run = date_dict["runs"][id_run]
+    dt_timestamps = [datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f') for timestamp in date_dict["timestamps"]]
+    velocity_vectors_run, speed_run, acceleration_run = calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps)
+    
+    print(id_run)
+    print(run)
+    print(date_key)
+    print(np.array(velocity_vectors_run).shape)
+
+    # positions
+    ax1 = plt.subplot(321)
+    x = np.array(date_dict["positions"])[run[0]:run[1],0]
+    y = np.array(date_dict["positions"])[run[0]:run[1],1]
+
+    ax1.set_xlim(2000)
+    ax1.set_ylim(2000)
+    ax1.invert_xaxis()
+    ax1.invert_yaxis()
+    ax1.axis('equal')
+    ax1.scatter(x,y,s=2)
+    ax1.plot(x, y)
+
+    # plot start and end points
+    ax1.plot(x[0], y[0], marker="o", markersize=12, color='green')
+    ax1.plot(x[-1], y[-1], marker="X", markersize=12, color='red')
+
+    ax1.set_title(f"positions {date_key}_{id_run}")
+    # plt.show()
+
+    # speeds    
+    ax2 = plt.subplot(322)
+    ax2.plot(speed_run)
+    ax2.set_title(f"speeds {date_key}_{id_run}")
+
+    # acceleration
+    ax3 = plt.subplot(323)
+    # run_accelerations = date_dict["accelerations"][id_run]
+    ax3.plot(acceleration_run)
+    ax3.set_title(f"accelerations {date_key}_{id_run}")
+
+    # rotations
+    ax4 = plt.subplot(324, projection='polar')
+    run_rotations = np.radians(date_dict["rotation"][run[0]:run[1]])                
+    circular_hist(ax4, run_rotations, bins=16, density=True, offset=0, gaps=True)
+    ax4.set_title(f"rotations {date_key}_{id_run}")
+
+    #
+    fig.suptitle(f"{dt_timestamps[run[0]]} - {dt_timestamps[run[1]]}")#, fontsize=10)
+    plt.tight_layout()
+    if show:
         plt.show()
+        
+    return fig
                 
-                
-def plot_runs(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True):              
+def plot_runs(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True, show=True):              
     dates_keys = dates_dict.keys()
 
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
 
         if start_date is not None:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
         if end_date is not None:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
         date = datetime.strptime(date_key, '%Y-%m-%d')
 
-        if start_date is not None and start_date > date:
+        if start_date is not None and start_date_dt > date:
             continue
-        if end_date is not None and end_date < date:
+        if end_date is not None and end_date_dt < date:
             continue
 
         # plot if positions available
@@ -90,52 +153,9 @@ def plot_runs(dates_dict, start_date=None, end_date=None, challenges=True, only_
                 runs = date_dict["runs"]
                 ids_runs = list(range(len(runs)))
             
-            for id_r, run in enumerate(runs):
-                plt.figure(num=date_key, figsize=(16,9))
-                
+            for id_r, run in enumerate(runs):                
                 id_run = ids_runs[id_r]
-
-                # positions
-                ax1 = plt.subplot(321)
-                x = np.array(date_dict["positions"])[run[0]:run[1],0]
-                y = np.array(date_dict["positions"])[run[0]:run[1],1]
-
-                ax1.set_xlim(2000)
-                ax1.set_ylim(2000)
-                ax1.invert_xaxis()
-                ax1.invert_yaxis()
-                ax1.axis('equal')
-                ax1.scatter(x,y,s=2)
-                ax1.plot(x, y)
-
-                # plot start and end points
-                ax1.plot(x[0], y[0], marker="o", markersize=12, color='green')
-                ax1.plot(x[-1], y[-1], marker="X", markersize=12, color='red')
-
-                ax1.set_title(f"positions {date_key}_{id_run}")
-                # plt.show()
-
-                # speeds
-                ax2 = plt.subplot(322)
-                run_speeds = date_dict["speeds"][id_run]
-                ax2.plot(run_speeds)
-                ax2.set_title(f"speeds {date_key}_{id_run}")
-
-                # acceleration
-                ax3 = plt.subplot(323)
-                run_accelerations = date_dict["accelerations"][id_run]
-                ax3.plot(run_accelerations)
-                ax3.set_title(f"accelerations {date_key}_{id_run}")
-
-                # rotations
-                ax4 = plt.subplot(324, projection='polar')
-                run_rotations = np.radians(date_dict["rotation"][run[0]:run[1]])                
-                circular_hist(ax4, run_rotations, bins=16, density=True, offset=0, gaps=True)
-                ax4.set_title(f"rotations {date_key}_{id_run}")
-
-                #
-                plt.tight_layout()
-                plt.show()
+                plot_run(date_dict, id_run, date_key)
                 
 # https://stackoverflow.com/questions/22562364/circular-polar-histogram-in-python
 def circular_hist(ax, x, bins=16, density=True, offset=0, gaps=True):
@@ -229,18 +249,16 @@ def plot_position_hexmap(pos, ax=None):
     ax.hexbin(x,y, gridsize=80, bins='log', cmap='inferno') # use log bins to ignore positions where robot stands still
     plt.show()
     
-def plot_starts_ends(dates_dict, challenges=True, only_successful=True):
+def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=True):
     # all start and end positions challenge runs
     dates_keys = dates_dict.keys()
-
+    
+    all_starts = []
+    all_ends = []
 
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
         
-        all_starts = []
-        all_ends = []
-
-
         # plot if positions available
         if len(date_dict["positions"]) != 0:
             
@@ -259,20 +277,31 @@ def plot_starts_ends(dates_dict, challenges=True, only_successful=True):
 
         assert len(all_starts) == len(all_ends)
 
-        if len(all_starts) > 0:
-            plt.figure(num=date_key, figsize=(15,15))
-            plt.scatter(np.array(all_starts)[:,0], np.array(all_starts)[:,1], marker="o", s=15, color='green', label="Start positions")
-            plt.scatter(np.array(all_ends)[:,0], np.array(all_ends)[:,1], marker="X", s=30, color='red', label="End positions")
+    if len(all_starts) > 0:
+        fig = plt.figure(num=date_key, figsize=(15,15))
+        plt.scatter(np.array(all_starts)[:,0], np.array(all_starts)[:,1], marker="o", s=15, color='green', label="Start positions")
+        plt.scatter(np.array(all_ends)[:,0], np.array(all_ends)[:,1], marker="X", s=30, color='red', label="End positions")
 
-            plt.title(f"{date_key} - all start and end positions of challenge runs")
-            plt.xlim(0,2000)
-            plt.ylim(0,2000)
-            plt.xlabel("x-coordinate (px)")
-            plt.ylabel("y-coordinate (px)")
-            plt.legend()
+        if only_successful:
+            run_descriptor = "successful challenge "
+        elif challenges:
+            run_descriptor = "challenge "
+        else:
+            run_descriptor = ""
+        plt.title(f"{date_key} - all start and end positions of {run_descriptor}runs")
+        plt.xlim(0,2000)
+        plt.ylim(0,2000)
+        plt.xlabel("x-coordinate (px)")
+        plt.ylabel("y-coordinate (px)")
+        plt.legend()
+        if show:
             plt.show()
+        return fig
+    else:
+        return plt.figure()
+        
             
-def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True, ignore_robot_standing=True, polar_density=True):
+def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True, ignore_robot_standing=True, polar_density=True, show=True):
 
     dates_keys = dates_dict.keys()
 
@@ -344,13 +373,33 @@ def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True
     # plt.gca().invert_yaxis()
     plt.hexbin(x,y, gridsize=80, bins='log', cmap='inferno') # use log bins to ignore positions where robot stands still
     plt.title("hexbin plot of all loaded robot positions")
-    plt.show()
     
-def plot_inter_individual_distances(dates_dict_robot_fish, challenges=True, only_successful=True, bins=20):
+    if show:
+        plt.show()
+    
+    return fig
+    
+def plot_inter_individual_distances(dates_dict_robot_fish, start_date, end_date, challenges=True, only_successful=True, bins=20, show=True):
     dates_keys = dates_dict_robot_fish.keys()
 
+    if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    figs1 = []
+    figs2 = []
+    
     for date_key in dates_keys:
-
+        
+        # check date 
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None and start_date_dt > date:
+            continue
+        if end_date is not None and end_date_dt < date:
+            continue
+        
+        # generate data for plots
         all_mean_iid_per_bin = []
         date_dict = dates_dict_robot_fish[date_key]
 
@@ -376,7 +425,6 @@ def plot_inter_individual_distances(dates_dict_robot_fish, challenges=True, only
                 print("Wrong array lengths: fish and robot")
                 assert False
             fish1_pos_this_run = np.array([fish[0] for fish in fish_pos_this_run]) # get first fish for each timestamp as it always is the target fish
-
             # plot all runs in one 
             ii_distances_r_f1_run = np.linalg.norm(fish1_pos_this_run-robot_pos_run, axis=1)
             plt.figure(num=f"{date_key} - inter-individual distances between robot and target fish (id 1)", figsize=(15,5))
@@ -412,16 +460,19 @@ def plot_inter_individual_distances(dates_dict_robot_fish, challenges=True, only
         overall_std_iid_per_bin = np.nanstd(all_mean_iid_per_bin, axis=0)
 
         # plot all runs this day in one plot      
-        plt.figure(num=f"{date_key} - inter-individual distances between robot and target fish (id 1)", figsize=(15,5))        
+        fig = plt.figure(num=f"{date_key} - inter-individual distances between robot and target fish (id 1)", figsize=(15,5))  
+        figs1.append(fig)
         plt.title(f"{date_key} - inter-individual distances between robot and target fish (id 1)")
         plt.ylim(0,3000)
         plt.ylabel("distance in px")
         plt.xlabel("frame")
-        plt.show()
+        if show:
+            plt.show()
 
 
         # bar plot all mean idds per bin
-        plt.figure(num=f"{date_key} - frame-scliced inter-individual distances between robot and target fish (id 1)", figsize=(15,5))
+        fig = plt.figure(num=f"{date_key} - frame-scliced inter-individual distances between robot and target fish (id 1)", figsize=(15,5))
+        figs2.append(fig)
         ticks = np.arange(len(overall_mean_iid_per_bin))
         plt.bar(x=ticks, height=overall_mean_iid_per_bin, yerr=overall_std_iid_per_bin, tick_label=ticks, color='black', ecolor="gray", capsize=4)
         plt.title(f"{date_key} - frame-binned average inter-individual distances between robot and target fish (id 1)")
@@ -439,55 +490,19 @@ def plot_inter_individual_distances(dates_dict_robot_fish, challenges=True, only
         plt.axhline(220, linewidth=2, color='g', linestyle=(0,(2,2)), label="attraction") # attraction distance
 
         plt.legend()
-        plt.show()
-        
-        
-def plot_time_of_day_histogram(dates_dict, challenges=True, only_successful=True):
-    # bar plot average time of day for each run
-    dates_keys = dates_dict.keys()
-
-    start_times = []
-    for date_key in dates_keys:
-        date_dict = dates_dict[date_key]
-        
-        # collect start times for each (challenge/successful) run
-        date_runs = date_dict["runs"]
-        date_timestamps = date_dict["timestamps"]
-        
-        if only_successful:
-            runs, _ = get_successful_runs(date_runs,date_dict["successful"])
-        elif challenges:
-            runs, _ = get_challenge_runs(date_runs,date_dict["challenges"])
-        else:
-            runs = date_runs
-        for run in runs:
-            start_time = date_timestamps[run[0]]
-            start_times.append(start_time)
-
-
-    # hist plot start times
-    start_times_hours = [datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S,%f').hour for start_time in start_times]
-    # print(len(start_times_hours))
-    time_bins = list(range(8,23))
-    plt.figure(figsize=(15,5))
-    plt.xlabel("hour of the day")
-    plt.ylabel("number of runs")
-    if only_successful:
-        ch_or_s = "successful challenge "
-    elif challenges:
-        ch_or_s = "challenge "
-    else:
-        ch_or_s = ""
-    plt.title(f"total number of {ch_or_s}runs for each hour fo the day")
-    plt.xticks(time_bins)
-    _,_,_=plt.hist(start_times_hours, time_bins, label=time_bins, align="left")
+        if show:
+            plt.show()
+            
+    return figs1, figs2
     
-def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successful=True):
+def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successful=True, show=True):
     dates_keys = dates_dict.keys()
 
     all_run_lengths = []
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
+        
+        
 
         # collect start times for each (challenge/successful) run
         date_run_lengths = date_dict["run_lengths"]
@@ -502,22 +517,39 @@ def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successf
         # add date run lengths to all run lengths
         all_run_lengths.extend(run_lengths)
 
-    plt.figure(figsize=(15,5))
+    fig = plt.figure(figsize=(15,5))
     bins=list(range(0,200,bin_size))
     plt.xticks(bins)
     plt.hist(all_run_lengths, bins=bins,align="left")
     
     plt.xlabel("time for run (s)")
     plt.ylabel("number of runs")
-    plt.show()
+    
+    if show:
+        plt.show()
+    return fig
     
     
-def plot_robot_distance_goal(dates_dict, challenges=True, only_successful=True):
+def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, only_successful=True, show=True):
     dates_keys = dates_dict.keys()
 
-    all_run_lengths = []
+    if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    figs = []
     for date_key in dates_keys:
-        plt.figure(figsize=(15,5))
+        
+        # check date 
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None and start_date_dt > date:
+            continue
+        if end_date is not None and end_date_dt < date:
+            continue
+        
+        fig = plt.figure(figsize=(15,5))
+        figs.append(fig)
         date_dict = dates_dict[date_key]
 
         # collect goal distances for each run
@@ -536,6 +568,9 @@ def plot_robot_distance_goal(dates_dict, challenges=True, only_successful=True):
             robot_dist_goal = get_distance_to_goal(robot_pos_run)
             plt.plot(robot_dist_goal)
         plt.title(f"{date_key} - robot distance to target")
-        plt.xlabel("distance to goal (px)")
-        plt.ylabel("frames")
-        plt.show()
+        plt.ylabel("distance to goal (px)")
+        plt.xlabel("frames")
+        if show:
+            plt.show()
+            
+    return figs

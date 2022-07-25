@@ -53,11 +53,9 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
             date_dict["adjusted_positions"] = []
             date_dict["orientation"] = []
             date_dict["rotation"] = []
-            date_dict["velocities"] = []
-            date_dict["speeds"] = []
-            date_dict["accelerations"] = []
             date_dict["runs"] = []
-            date_dict["runs_lengths"] = []
+            date_dict["day_length"] = np.nan
+            date_dict["run_lengths"] = []
             date_dict["challenges"] = []
             date_dict["fish"] = []
             date_dict["successful"] = []
@@ -223,7 +221,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     id_timestamp = find_corresponding_timestamp(date_dict["timestamps"], timestamp, current_line_id)
                     
                     if id_timestamp == -1:
-                        print(f"No corresponding timestmap found for {timestamp}")
+                        print(f"No corresponding timestamp found for {timestamp}")
                         continue
                     fish_array = date_dict.get("fish", [])
                     
