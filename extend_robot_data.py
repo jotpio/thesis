@@ -9,10 +9,8 @@ def extend_robot_data(dates_dict):
     cutoff_run = 2 # seconds after new run is started
     min_data_run = 15 # ~5 seconds of data at 3fps
 
-
-    # add derived data to dates
     dates_keys = dates_dict.keys()
-
+    # add derived data to dates
     for date_key in dates_keys:    
         date_dict = dates_dict[date_key]
         

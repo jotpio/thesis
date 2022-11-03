@@ -1,4 +1,6 @@
 import sys, os
+import datetime
+import ui_helper
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(os.path.dirname(current))
 if parent not in sys.path:
@@ -20,6 +22,17 @@ st.write("""
         This page shows general robot related plots like position heatmaps and average orientations.
         """)
 
+# "with" notation
+sidebar, start_date, end_date, challenges, only_successful = ui_helper.setup_sidebar(start_date, end_date)
+# with st.sidebar:
+#     start_date = st.date_input(
+#             "Start date",
+#             # datetime.date(2022, 2, 1))
+#             datetime.datetime.strptime(str(start_date), "%Y-%m-%d").date()).strftime("%Y-%m-%d")
+#     end_date = st.date_input(
+#             "End date",
+#             datetime.datetime.strptime(str(end_date), "%Y-%m-%d").date()).strftime("%Y-%m-%d")
+
 # plots
 tab1, tab2, tab3 = st.tabs(["all robot positions", "avg rot and pos", "starts and ends"])
 
@@ -27,7 +40,7 @@ with tab1:
     st.write("""
         This scatter plot shows all robot positions for all loaded days. 
     """)
-    fig = plot.plot_all_positions(data_model.dates_dict, start_date=start_date, end_date=end_date, challenges=True, only_successful=True, show=False, size=(15,15))
+    fig = plot.plot_all_positions(data_model.dates_dict, start_date=start_date, end_date=end_date, challenges=challenges, only_successful=only_successful, show=False, size=(15,15))
     st.pyplot(fig)
 with tab2:
     st.header("average rotation and position heatmap")

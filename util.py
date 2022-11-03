@@ -85,6 +85,27 @@ def get_fish_pos_per_run(all_fish_pos, runs):
 
     return fish_pos_all_runs
 
+def get_fish_following_per_run(all_fish, runs):
+    fish_following_all_runs = []
+    if len(all_fish) == 0:
+        return []
+    for id_run, run in enumerate(runs):
+        fish_following_run = []
+        run_fish = all_fish[run[0]:run[1]]
+        
+        for all_fish_in_ts in run_fish:
+            fish_following_ts = []
+            for fish in all_fish_in_ts:
+                if fish['id'] != 0:
+                    fish_following_ts.append(fish["following"])
+                    
+            # print(fish_pos_ts[0])
+            fish_following_run.append(fish_following_ts)
+
+        fish_following_all_runs.append(fish_following_run)
+
+    return fish_following_all_runs
+
 def get_challenge_runs(runs, challenges):
     '''
     both need to be same length
@@ -105,6 +126,7 @@ def get_successful_runs(runs, successful):
         ids_successful_runs = np.argwhere(successful).ravel()
         return successful_runs, ids_successful_runs
     else:
+        print(f"No runs ({len(runs)}) or no successful runs  ({len(successful)}) or different size")
         return [], []
 
 # https://stackoverflow.com/questions/5254838/calculating-distance-between-a-point-and-a-rectangular-box-nearest-point
@@ -115,8 +137,14 @@ def get_distance_to_goal(pos):
     goal_min_y = 1250
     goal_max_y = 2000
     pos = np.array(pos)
-    dx = np.fmax(np.fmax(goal_min_x - pos[:,0], 0), pos[:,0] - goal_max_x)
-    dy = np.fmax(np.fmax(goal_min_y - pos[:,1], 0), pos[:,1] - goal_max_y)
+    if pos.ndim == 1:
+        dx = np.fmax(np.fmax(goal_min_x - pos[0], 0), pos[0] - goal_max_x)
+        dy = np.fmax(np.fmax(goal_min_y - pos[1], 0), pos[1] - goal_max_y)
+    elif pos.ndim == 2:
+        dx = np.fmax(np.fmax(goal_min_x - pos[:,0], 0), pos[:,0] - goal_max_x)
+        dy = np.fmax(np.fmax(goal_min_y - pos[:,1], 0), pos[:,1] - goal_max_y)
+    else:
+        assert False, "Dimensions of pos are wrong! not one or two dimensional"
     return np.sqrt(dx*dx + dy*dy)
 
 
@@ -304,3 +332,10 @@ def get_number_of_frames(dates_dict, start_date, end_date):
         total_number_of_frames += date_number_of_timestamps
         
     return total_number_of_frames
+
+def flatten_2d_list(input_list):
+    flat_list = []
+    for i in input_list:
+        for e in i:
+            flat_list.append(e)
+    return flat_list

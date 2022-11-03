@@ -57,6 +57,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
             date_dict["day_length"] = np.nan
             date_dict["run_lengths"] = []
             date_dict["challenges"] = []
+            date_dict["difficulties"] = []
             date_dict["fish"] = []
             date_dict["successful"] = []
         
@@ -133,7 +134,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
 
 def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
     '''
-    robot_dir:     directory of fish log files
+    fish_dir:      directory of fish log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
@@ -163,7 +164,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
         split_file_path = file_name.split(".")
                 
         if len(split_file_path) > 1:
-            file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
+            file_date = split_file_path[1][:10] #[fish][<YYYY-mm-dd>_HH]
             file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
             if start_date is not None and file_date_dt < start_date:
                 continue
@@ -177,7 +178,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
         date = file_date
         date_dict = dates_dict.get(date, dict())
         
-        # finish last run of the previous date
+        # reset current line id if new date started
         if prev_date is not None:
             if prev_date != date:
                 current_line_id = 0 
@@ -210,6 +211,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                 timestamp = f"{split_line[0]} {split_line[1]}"
                 rest = line[28:]           
                 
+                # 
                 if split_line[3] != "Started":
                     # make line json compliant
                     rest = rest.replace("\'", "\"")
@@ -225,7 +227,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                         continue
                     fish_array = date_dict.get("fish", [])
                     
-                    #
+                    # add current fish data to fish_array
                     if len(fish_array) == id_timestamp:
                         fish_array.append(rest)
                     elif len(fish_array) < id_timestamp:
@@ -258,7 +260,7 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
 def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=None):
     # load behavior output data and detect challenges
     '''
-    robot_dir:     directory of behavior log files
+    behavior_dir:  directory of behavior log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
@@ -284,6 +286,8 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
     timestamp_pointer = 0
 
     all_tic = time.time()
+    
+    # load files one by one
     for id_file_path, file_path in enumerate(file_paths):
         tic = time.time()
         # check if file in given date range and skip if not
@@ -308,7 +312,7 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
         # finish last run of the previous date
         if prev_date is not None:
             if prev_date != date:
-                #finish last run of previous date (append last timestamp to last run)
+                # finish last run of previous date (append last timestamp to last run)
                 prev_date_dict = dates_dict[prev_date]
 
                 prev_runs = prev_date_dict["runs"]
@@ -332,8 +336,9 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
             date_timestamps = date_dict["timestamps"]
             date_runs = date_dict["runs"]
             date_challenges = date_dict["challenges"]
+            date_challenge_difficulties = date_dict["difficulties"]
 
-            # get last run
+            # get last run of current date
             if date_runs != [] and date_runs is not None:
                 if len(date_runs[-1]) == 1:
                     current_run = date_runs[-1].copy()
@@ -343,17 +348,15 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                     current_run = []
             else:
                 current_run = []
-
+            
+            # load line by line
             for id_line, line in enumerate(file):
                 # remove \n
                 line = line.replace("\n", "")
-
                 # remove \x00
                 line = line.replace("\x00", "")
-
                 # split line at white spaces
                 split_line = line.split(" ")
-
                 # check if line is irregular
                 if len(split_line) == 1: #no whitespace detected
                     print(f"Irregular line ({id_line}) in {file_path}!")
@@ -386,6 +389,8 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                         
                         # add new run to challenges; if challenge message is found, set this bool to True
                         date_challenges.append(False)
+                        # set dafult difficulty to 0
+                        date_challenge_difficulties.append(0)
                         
                         # start timestamp - run
                         if len(current_run) == 0:
@@ -477,17 +482,26 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                 #         # print(f"\tzone tester: Did not find corresponding timestamp for this message! {current_timestamp}")
                 #         pass
 
-                # filter by challenge runs 
+                # get challenge runs and get difficulty
                 elif message in ["COMMAND: Received ['reset_fish', 2]", "COMMAND: Received ['reset_fish', 4]","COMMAND: Received ['reset_fish', 6]"]:
-
                     if len(date_challenges) > 0:
                         date_challenges[-1] = True # update current run to challenge
                     else:
                         print(f"Received challenge message before joystick message! {current_timestamp, id_line, file_path}")
+                    # add difficulty
+                    if message == "COMMAND: Received ['reset_fish', 2]":
+                        date_challenge_difficulties[-1] = 2
+                    elif message == "COMMAND: Received ['reset_fish', 4]":
+                        date_challenge_difficulties[-1] = 4
+                    elif message == "COMMAND: Received ['reset_fish', 6]":
+                        date_challenge_difficulties[-1] = 6
+                    else:
+                        assert False, f"Some kind of error in difficulty recognition!\nmessage: {message}"
+                    
 
 
-                    # update date dict in dates_dict
-                    dates_dict[date] = date_dict
+                # update date dict in dates_dict
+                dates_dict[date] = date_dict
 
             # file done; add current run to all runs
             if current_run != [] and current_run is not None:
@@ -527,3 +541,4 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
     print(f"Loading behavior files took {all_toc-all_tic} seconds")
     
     return dates_dict
+

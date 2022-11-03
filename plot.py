@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import numpy as np
 
-from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal, calculate_run_velocity_speed_acceleration
+from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal, calculate_run_velocity_speed_acceleration, get_fish_following_per_run
 
 
 def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, challenges=True, only_successful=True, show=True, size=(10,10)):
@@ -60,7 +60,13 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
         # plt.gca().invert_yaxis()
         ax.scatter(x,y,s=2)
         # plt.plot(x, y)
-        ax.set_title(f"all positions: {start_date.strftime('%Y-%m-%d')}  -  {end_date.strftime('%Y-%m-%d')}")
+        if only_successful:
+            title_run_modifier = "only successful runs"
+        elif challenges:
+            title_run_modifier = "all challenge runs"
+        else:
+            title_run_modifier = "all runs"
+        ax.set_title(f"all positions: {start_date.strftime('%Y-%m-%d')}  -  {end_date.strftime('%Y-%m-%d')} - {title_run_modifier}")
         
         if show:
             plt.show()
@@ -116,7 +122,13 @@ def plot_run(date_dict, id_run, date_key, show=True):
     ax4.set_title(f"rotations {date_key}_{id_run}")
 
     #
-    fig.suptitle(f"{dt_timestamps[run[0]]} - {dt_timestamps[run[1]]}")#, fontsize=10)
+    if only_successful:
+        title_run_modifier = "only successful runs"
+    elif challenges:
+        title_run_modifier = "all challenge runs"
+    else:
+        title_run_modifier = "all runs"
+    fig.suptitle(f"{dt_timestamps[run[0]]} - {dt_timestamps[run[1]]}: {title_run_modifier}")#, fontsize=10)
     plt.tight_layout()
     if show:
         plt.show()
@@ -574,3 +586,105 @@ def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, 
             plt.show()
             
     return figs
+
+
+def plot_following1(dates_dict, start_date, end_date, only_successful, challenges, show=True):
+    dates_keys = dates_dict.keys()
+
+    if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+    daily_percentage_of_run_following = []
+    daily_run_lengths = []
+    for date_key in dates_keys:
+
+        # check date 
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None and start_date_dt > date:
+            continue
+        if end_date is not None and end_date_dt < date:
+            continue
+
+        # generate data for plots
+        date_dict = dates_dict[date_key]
+
+        fish_instance = date_dict["fish"]
+        runs = date_dict["runs"]
+        run_lengths = date_dict["run_lengths"]
+
+        # filter runs
+        if only_successful:
+            runs, ids_runs = get_successful_runs(runs,date_dict["successful"])
+        elif challenges:
+            runs, ids_runs = get_challenge_runs(runs,date_dict["challenges"])
+        else:
+            runs = date_dict["runs"]
+            ids_runs = list(range(len(runs)))
+
+        # filter run lengths
+        run_lengths = np.array(run_lengths)[ids_runs]
+
+        # get following status for all fish for all timesteps
+        if len(runs) > 0:
+            fish_following_runs = get_fish_following_per_run(fish_instance,runs)
+        else:
+            continue
+
+        day_percentage_of_run_following = []
+        for id_run, run in enumerate(runs):
+            fish_following_this_run = fish_following_runs[id_run]
+
+            # get target fish for each ts
+            target_fish_following_this_run = []
+            for ts in fish_following_this_run:
+                target_fish_following_this_run.append(ts[0])
+            target_fish_following_this_run = np.array(target_fish_following_this_run)
+            # plt.plot(target_fish_following_this_run)
+            # plt.show()
+
+            # calc percentage of run following
+            percentage_of_run_following = target_fish_following_this_run.sum() / len(target_fish_following_this_run)
+            # print(target_fish_following_this_run.sum(), len(target_fish_following_this_run), run)
+            day_percentage_of_run_following.append(percentage_of_run_following)
+        # print(days_percentage_of_run_following)
+        daily_percentage_of_run_following.append(day_percentage_of_run_following)
+        daily_run_lengths.append(run_lengths)
+
+    # print(all_percentage_of_run_following)
+
+    # histogram following percentages
+    flattened_percentage_of_run_following = [x for xs in daily_percentage_of_run_following for x in xs]
+    fig = plt.figure(figsize=(15,8))
+    plt.title(f"histogram of leading percentages per run {start_date} - {end_date}")
+    plt.hist(flattened_percentage_of_run_following, bins=20)
+    plt.xlabel("percentage of run time leading the target fish")
+    plt.ylabel("number of runs")
+    plt.show()
+
+    # run length following percentage correlation plot
+    flattened_daily_run_lengths = [x for xs in daily_run_lengths for x in xs]
+    fig = plt.figure(figsize=(15,8))
+    plt.title("correlation plot of run lengths and leading percentage")
+    plt.scatter(flattened_daily_run_lengths, flattened_percentage_of_run_following)
+    plt.xlabel("run time in seconds")
+    plt.ylabel("percentage of run time leading the target")
+
+    # linear regression        
+    coef = np.polyfit(flattened_daily_run_lengths,flattened_percentage_of_run_following,1)
+    poly1d_fn = np.poly1d(coef) 
+    # poly1d_fn is now a function which takes in x and returns an estimate for y
+    plt.plot(flattened_daily_run_lengths,flattened_percentage_of_run_following, 'bo', flattened_daily_run_lengths, poly1d_fn(flattened_daily_run_lengths), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker
+
+    # polynomial regression
+    mymodel = np.poly1d(np.polyfit(flattened_daily_run_lengths, flattened_percentage_of_run_following, 10))
+    myline = np.linspace(8, 180, 100)
+    plt.plot(myline,  mymodel(myline), '--r')
+
+    # plt.xlim(0, 5)
+    # plt.ylim(0, 12)
+    if show:
+        plt.show()
+        
+    return fig
