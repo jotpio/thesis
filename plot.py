@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import numpy as np
 
-from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal, calculate_run_velocity_speed_acceleration, get_fish_following_per_run
+from util import get_challenge_runs, get_successful_runs, distance, get_fish_pos_per_run, get_distance_to_goal, calculate_run_velocity_speed_acceleration, get_fish_following_per_run, flatten_2d_list, tolerant_mean, equalize_arrays
 
 
 def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, challenges=True, only_successful=True, show=True, size=(10,10)):
@@ -32,13 +32,13 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
                 successful_runs, _ = get_successful_runs(date_dict["runs"], date_dict["successful"])
                 for run in successful_runs:
                     try:
-                        all_positions.extend(date_positions[run[0]:run[1]])
+                        all_positions.extend(date_positions[run[0]:run[1]+1])
                     except:
                         print(run)
             elif challenges:
                 challenge_runs, _ = get_challenge_runs(date_dict["runs"], date_dict["challenges"])
                 for run in challenge_runs:
-                    all_positions.extend(date_positions[run[0]:run[1]])
+                    all_positions.extend(date_positions[run[0]:run[1]+1])
             else:
                 all_positions.extend(date_positions)
 
@@ -73,7 +73,7 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
         
         return fig
 
-def plot_run(date_dict, id_run, date_key, show=True):
+def plot_run(date_dict, id_run, date_key, challenges=True, only_successful=True, show=True):
     fig = plt.figure(num=date_key, figsize=(16,9))
     run = date_dict["runs"][id_run]
     dt_timestamps = [datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f') for timestamp in date_dict["timestamps"]]
@@ -86,8 +86,8 @@ def plot_run(date_dict, id_run, date_key, show=True):
 
     # positions
     ax1 = plt.subplot(321)
-    x = np.array(date_dict["positions"])[run[0]:run[1],0]
-    y = np.array(date_dict["positions"])[run[0]:run[1],1]
+    x = np.array(date_dict["positions"])[run[0]:run[1]+1,0]
+    y = np.array(date_dict["positions"])[run[0]:run[1]+1,1]
 
     ax1.set_xlim(2000)
     ax1.set_ylim(2000)
@@ -117,7 +117,7 @@ def plot_run(date_dict, id_run, date_key, show=True):
 
     # rotations
     ax4 = plt.subplot(324, projection='polar')
-    run_rotations = np.radians(date_dict["rotation"][run[0]:run[1]])                
+    run_rotations = np.radians(date_dict["rotation"][run[0]:run[1]+1])                
     circular_hist(ax4, run_rotations, bins=16, density=True, offset=0, gaps=True)
     ax4.set_title(f"rotations {date_key}_{id_run}")
 
@@ -167,7 +167,7 @@ def plot_runs(dates_dict, start_date=None, end_date=None, challenges=True, only_
             
             for id_r, run in enumerate(runs):                
                 id_run = ids_runs[id_r]
-                plot_run(date_dict, id_run, date_key)
+                plot_run(date_dict, id_run, date_key, challenges, only_successful)
                 
 # https://stackoverflow.com/questions/22562364/circular-polar-histogram-in-python
 def circular_hist(ax, x, bins=16, density=True, offset=0, gaps=True):
@@ -261,7 +261,7 @@ def plot_position_hexmap(pos, ax=None):
     ax.hexbin(x,y, gridsize=80, bins='log', cmap='inferno') # use log bins to ignore positions where robot stands still
     plt.show()
     
-def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=True):
+def plot_starts_ends(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True, show=True):
     # all start and end positions challenge runs
     dates_keys = dates_dict.keys()
     
@@ -271,9 +271,24 @@ def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=Tru
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
         
+        
+        # filter date range
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
+    
         # plot if positions available
         if len(date_dict["positions"]) != 0:
-            
             if only_successful:
                 runs, _ = get_challenge_runs(date_dict["runs"], date_dict["successful"])
             elif challenges:
@@ -291,8 +306,8 @@ def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=Tru
 
     if len(all_starts) > 0:
         fig = plt.figure(num=date_key, figsize=(15,15))
-        plt.scatter(np.array(all_starts)[:,0], np.array(all_starts)[:,1], marker="o", s=15, color='green', label="Start positions")
-        plt.scatter(np.array(all_ends)[:,0], np.array(all_ends)[:,1], marker="X", s=30, color='red', label="End positions")
+        plt.scatter(np.array(all_starts)[:,0], np.array(all_starts)[:,1], marker="o", s=15, color='green', label="Robot start positions")
+        plt.scatter(np.array(all_ends)[:,0], np.array(all_ends)[:,1], marker="X", s=30, color='red', label="Robot end positions")
 
         if only_successful:
             run_descriptor = "successful challenge "
@@ -300,7 +315,7 @@ def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=Tru
             run_descriptor = "challenge "
         else:
             run_descriptor = ""
-        plt.title(f"{date_key} - all start and end positions of {run_descriptor}runs")
+        plt.title(f"[{start_date}]-[{end_date}] - all robot start and end positions of {run_descriptor}runs")
         plt.xlim(0,2000)
         plt.ylim(0,2000)
         plt.xlabel("x-coordinate (px)")
@@ -308,12 +323,13 @@ def plot_starts_ends(dates_dict, challenges=True, only_successful=True, show=Tru
         plt.legend()
         if show:
             plt.show()
-        return fig
+        else:
+            return fig
     else:
         return plt.figure()
         
             
-def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True, ignore_robot_standing=True, polar_density=True, show=True):
+def plot_rotations_and_heatmap(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True, ignore_robot_standing=True, polar_density=True, show=True):
 
     dates_keys = dates_dict.keys()
 
@@ -322,6 +338,24 @@ def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True
 
     for date_key in dates_keys:    
         date_dict = dates_dict[date_key]
+        
+        
+        # filter date range
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
+        
+        
         date_rotations = date_dict["rotation"]
         date_positions = date_dict["positions"]
         # combine positions and rotations
@@ -329,17 +363,17 @@ def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True
             successful_runs, ids = get_successful_runs(date_dict["runs"], date_dict["successful"])
             for id_cr, run in enumerate(successful_runs):
                 # append challenge rotations
-                all_rotations.extend(date_rotations[run[0]:run[1]])
+                all_rotations.extend(date_rotations[run[0]:run[1]+1])
                 # append challenge positions
-                all_positions.extend(date_positions[run[0]:run[1]])
+                all_positions.extend(date_positions[run[0]:run[1]+1])
         
         elif challenges:
             challenge_runs, ids = get_challenge_runs(date_dict["runs"], date_dict["challenges"])
             for id_cr, run in enumerate(challenge_runs):
                 # append challenge rotations
-                all_rotations.extend(date_rotations[run[0]:run[1]])
+                all_rotations.extend(date_rotations[run[0]:run[1]+1])
                 # append challenge positions
-                all_positions.extend(date_positions[run[0]:run[1]])
+                all_positions.extend(date_positions[run[0]:run[1]+1])
         else:
             # append all rotations
             if date_rotations is not None:
@@ -370,6 +404,7 @@ def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True
     # plot overall rotation 
     # fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection='polar'))
     fig = plt.figure(figsize=(20,10))
+    fig.suptitle(f'[{start_date}]-[{end_date}] - robot: Average rotation circular histogram and positional heatmap', fontsize=14)
     ax1 = plt.subplot(121, projection='polar')
     ax1.set_title("binned robot rotation")
     circular_hist(ax1, np.radians(all_rotations),bins=16, density=polar_density, offset=0, gaps=True)
@@ -388,10 +423,10 @@ def plot_rotations_and_heatmap(dates_dict, challenges=True, only_successful=True
     
     if show:
         plt.show()
+    else:
+        return fig
     
-    return fig
-    
-def plot_inter_individual_distances(dates_dict_robot_fish, start_date, end_date, challenges=True, only_successful=True, bins=20, show=True):
+def plot_inter_individual_distances(dates_dict_robot_fish, start_date=None, end_date=None, challenges=True, only_successful=True, bins=20, show=True):
     dates_keys = dates_dict_robot_fish.keys()
 
     if start_date is not None:
@@ -404,12 +439,20 @@ def plot_inter_individual_distances(dates_dict_robot_fish, start_date, end_date,
     
     for date_key in dates_keys:
         
-        # check date 
+        # filter date range
         date = datetime.strptime(date_key, '%Y-%m-%d')
-        if start_date is not None and start_date_dt > date:
-            continue
-        if end_date is not None and end_date_dt < date:
-            continue
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
         
         # generate data for plots
         all_mean_iid_per_bin = []
@@ -507,14 +550,27 @@ def plot_inter_individual_distances(dates_dict_robot_fish, start_date, end_date,
             
     return figs1, figs2
     
-def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successful=True, show=True):
+def plot_run_length_hist(dates_dict, start_date=None, end_date=None, bin_size=10, challenges=True, only_successful=True, show=True):
     dates_keys = dates_dict.keys()
 
     all_run_lengths = []
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]
         
-        
+        # filter date range
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
 
         # collect start times for each (challenge/successful) run
         date_run_lengths = date_dict["run_lengths"]
@@ -530,6 +586,7 @@ def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successf
         all_run_lengths.extend(run_lengths)
 
     fig = plt.figure(figsize=(15,5))
+    fig.suptitle(f'[{start_date}]-[{end_date}] - run length histogram', fontsize=14)
     bins=list(range(0,200,bin_size))
     plt.xticks(bins)
     plt.hist(all_run_lengths, bins=bins,align="left")
@@ -539,7 +596,8 @@ def plot_run_length_hist(dates_dict, bin_size=10, challenges=True, only_successf
     
     if show:
         plt.show()
-    return fig
+    else:
+        return fig
     
     
 def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, only_successful=True, show=True):
@@ -553,13 +611,22 @@ def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, 
     figs = []
     for date_key in dates_keys:
         
-        # check date 
+        # filter date range
         date = datetime.strptime(date_key, '%Y-%m-%d')
-        if start_date is not None and start_date_dt > date:
-            continue
-        if end_date is not None and end_date_dt < date:
-            continue
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
         
+        #
         fig = plt.figure(figsize=(15,5))
         figs.append(fig)
         date_dict = dates_dict[date_key]
@@ -574,11 +641,16 @@ def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, 
             runs, _ = get_challenge_runs(date_runs,date_dict["challenges"])
         else:
             runs = date_runs
-
+        all_robot_dist_goal = []
         for run in runs:
-            robot_pos_run = date_pos[run[0]:run[1]]
+            robot_pos_run = date_pos[run[0]:run[1]+1]
             robot_dist_goal = get_distance_to_goal(robot_pos_run)
+            all_robot_dist_goal.append(robot_dist_goal.tolist())
             plt.plot(robot_dist_goal)
+        if len(all_robot_dist_goal) > 0:
+            mean_dist_goal = np.mean(equalize_arrays(all_robot_dist_goal, 0), axis=0)
+            plt.plot(mean_dist_goal, color='green', linewidth=6)
+            
         plt.title(f"{date_key} - robot distance to target")
         plt.ylabel("distance to goal (px)")
         plt.xlabel("frames")
@@ -587,8 +659,7 @@ def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, 
             
     return figs
 
-
-def plot_following1(dates_dict, start_date, end_date, only_successful, challenges, show=True):
+def plot_following1(dates_dict, start_date=None, end_date=None, only_successful=True, challenges=True, show=True):
     dates_keys = dates_dict.keys()
 
     if start_date is not None:
@@ -600,12 +671,20 @@ def plot_following1(dates_dict, start_date, end_date, only_successful, challenge
     daily_run_lengths = []
     for date_key in dates_keys:
 
-        # check date 
+        # filter date range
         date = datetime.strptime(date_key, '%Y-%m-%d')
-        if start_date is not None and start_date_dt > date:
-            continue
-        if end_date is not None and end_date_dt < date:
-            continue
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
 
         # generate data for plots
         date_dict = dates_dict[date_key]
@@ -657,7 +736,7 @@ def plot_following1(dates_dict, start_date, end_date, only_successful, challenge
     # histogram following percentages
     flattened_percentage_of_run_following = [x for xs in daily_percentage_of_run_following for x in xs]
     fig = plt.figure(figsize=(15,8))
-    plt.title(f"histogram of leading percentages per run {start_date} - {end_date}")
+    plt.title(f"[{start_date}] - [{end_date}] - histogram of leading percentages per run ")
     plt.hist(flattened_percentage_of_run_following, bins=20)
     plt.xlabel("percentage of run time leading the target fish")
     plt.ylabel("number of runs")
@@ -666,7 +745,7 @@ def plot_following1(dates_dict, start_date, end_date, only_successful, challenge
     # run length following percentage correlation plot
     flattened_daily_run_lengths = [x for xs in daily_run_lengths for x in xs]
     fig = plt.figure(figsize=(15,8))
-    plt.title("correlation plot of run lengths and leading percentage")
+    plt.title(f"[{start_date}] - [{end_date}] - correlation plot of run lengths and leading percentage")
     plt.scatter(flattened_daily_run_lengths, flattened_percentage_of_run_following)
     plt.xlabel("run time in seconds")
     plt.ylabel("percentage of run time leading the target")
@@ -686,5 +765,119 @@ def plot_following1(dates_dict, start_date, end_date, only_successful, challenge
     # plt.ylim(0, 12)
     if show:
         plt.show()
+    else:
+        return fig
+    
+def plot_runlength_dist_goal_target_corr(dates_dict, start_date=None, end_date=None, only_successful=True, challenges=True, show=True):
+    dates_keys = dates_dict.keys()
+
+    if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+
+    daily_initial_dist_robot_target_fish = []
+    daily_initial_dist_robot_goal = []
+    daily_run_lengths = []
+    for date_key in dates_keys:
+
+         # filter date range
+        date = datetime.strptime(date_key, '%Y-%m-%d')
+        if start_date is not None:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            if start_date is not None and start_date_dt > date:
+                continue
+        else:
+            start_date = list(dates_keys)[0]
+        if end_date is not None:
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            if end_date is not None and end_date_dt < date:
+                continue
+        else:
+            end_date = list(dates_keys)[-1]
+
+        # generate data for plots
+        date_dict = dates_dict[date_key]
+
+        fish_instance = date_dict["fish"]
+        runs = date_dict["runs"]
+        run_lengths = date_dict["run_lengths"]
+
+
+        # filter runs
+        if only_successful:
+            runs, ids_runs = get_successful_runs(runs,date_dict["successful"])
+        elif challenges:
+            runs, ids_runs = get_challenge_runs(runs,date_dict["challenges"])
+        else:
+            runs = date_dict["runs"]
+            ids_runs = list(range(len(runs)))
+        # filter run lengths
+        run_lengths = np.array(run_lengths)[ids_runs]
+
+        # get pos for all fish for all timesteps
+        if len(runs) > 0:
+            fish_pos_runs = get_fish_pos_per_run(fish_instance,runs)
+        else:
+            print(f"No runs in {date_key}")
+            continue
+
+        day_initial_dist_robot_target_fish = []
+        day_initial_dist_robot_goal = []
+        for id_run, run in enumerate(runs):
+
+            # get dist to target fish
+            all_fish_pos_this_run = fish_pos_runs[id_run]       
+            fish1_pos_this_run = np.array([fish[0] for fish in all_fish_pos_this_run])
+            robot_pos_run = np.array(date_dict['positions'][run[0]:run[1]])
+
+            initial_distance = distance(fish1_pos_this_run[0], robot_pos_run[0])
+            day_initial_dist_robot_target_fish.append(initial_distance)
+
+            # sanity check
+            if len(all_fish_pos_this_run) != len(robot_pos_run):
+                print(f"Wrong array lengths: fish and robot {run} {len(all_fish_pos_this_run)} {len(robot_pos_run)}")
+                assert False
+            # else:
+            #     print("all good") 
+
+            # get dist to goal
+            inital_robot_pos_run = robot_pos_run[0]
+            initial_dist_goal = get_distance_to_goal(inital_robot_pos_run)
+
+            day_initial_dist_robot_goal.append(initial_dist_goal)
+
+        daily_initial_dist_robot_target_fish.append(day_initial_dist_robot_target_fish)
+        daily_run_lengths.append(run_lengths)
+        daily_initial_dist_robot_goal.append(day_initial_dist_robot_goal)
+
+    #fig1 = plt.figure(figsize=(15,9))
+
+    #flatten arrays to plot
+    flat_daily_run_lengths = flatten_2d_list(daily_run_lengths)
+    flat_daily_initial_dist_robot_goal = flatten_2d_list(daily_initial_dist_robot_goal)
+    flat_daily_initial_dist_robot_target_fish = flatten_2d_list(daily_initial_dist_robot_target_fish)
+
+
+    # plot
+    fig1 = plt.figure(figsize=(16,9))
+    plt.scatter(flat_daily_run_lengths, flat_daily_initial_dist_robot_target_fish, label="distance to target fish", s=3)
+    plt.scatter(flat_daily_run_lengths, flat_daily_initial_dist_robot_goal, label="distance to goal", s=3)
+
+    plt.xlabel("run length in seconds")
+    plt.ylabel("initial distance to target fish or goal area in px")
+    plt.title(f"[{start_date}] - [{end_date}] - correlation from run length to distance to goal and target fish")
+    plt.legend()
+    if show:
+        plt.show()
+
+    #
+    fig2 = plt.figure(figsize=(16,9))
+    plt.scatter(flat_daily_run_lengths, np.abs(np.array(flat_daily_initial_dist_robot_goal)-np.array(flat_daily_initial_dist_robot_target_fish)), s=3)
+    plt.title(f"[{start_date}] - [{end_date}] - correlation from run length to difference of distance to goal and distance to target")
+    plt.xlabel("run length in seconds")
+    plt.ylabel("difference between dist to goal and dist to target")
+    if show:
+        plt.show()
         
-    return fig
+    return fig1, fig2

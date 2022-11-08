@@ -10,7 +10,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
-
+    print(robot_dir)
     print(f"Loading robot data from {robot_dir}")
     # get robot files
     file_paths = glob.glob(robot_dir+"/robot.*")
@@ -178,6 +178,9 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
         date = file_date
         date_dict = dates_dict.get(date, dict())
         
+        if not date_dict:
+            continue
+        
         # reset current line id if new date started
         if prev_date is not None:
             if prev_date != date:
@@ -194,6 +197,9 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
 
                 # remove \x00
                 line = line.replace("\x00", "")
+                
+                # remove U+0000
+                line = line.replace(u"\u0000", "")
 
                 # split line at white spaces
                 split_line = line.split(" ")
@@ -212,18 +218,24 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                 rest = line[28:]           
                 
                 # 
-                if split_line[3] != "Started":
+                if split_line[3] != "Started" and "Started" not in line:                  
                     # make line json compliant
                     rest = rest.replace("\'", "\"")
                     rest = rest.replace("True", "true")
                     rest = rest.replace("False", "false")
-                    rest = json.loads(rest)  
+                    
+                    try:
+                        rest = json.loads(rest)
+                    except Exception as err:
+                        print(f"Error in line {id_line} of file {file_path}")
+                        print(f"{timestamp} - {rest}")
+                        print(f"Unexpected {err=}, {type(err)=}")
+                        raise
                     
                     # find corresponding timestamp in existing data and add fish data
                     id_timestamp = find_corresponding_timestamp(date_dict["timestamps"], timestamp, current_line_id)
-                    
                     if id_timestamp == -1:
-                        print(f"No corresponding timestamp found for {timestamp}")
+                        print(f"No corresponding timestamp found for {timestamp} (current timestamp id: {current_line_id}; timestamp at current timestamp: {date_dict['timestamps'][current_line_id]})")
                         continue
                     fish_array = date_dict.get("fish", [])
                     
@@ -232,15 +244,17 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                         fish_array.append(rest)
                     elif len(fish_array) < id_timestamp:
                         # add empty arrays until index of new timestamp is reached
+                        print(f"Adding {id_timestamp - len(fish_array)} empty arrays between {len(fish_array)} and {id_timestamp}")
                         for i in range(len(fish_array), id_timestamp):
                             fish_array.append([])
                             if len(fish_array) == id_timestamp:
                                 fish_array.append(rest)
+                                break
                     else: #if array already exists at this index, overwrite
                         print(len(fish_array), id_timestamp)
                         fish_array[id_timestamp] = rest
                     # print(fish_array)
-                    current_line_id += 1
+                    current_line_id = id_timestamp
                     
                     date_dict["fish"] = fish_array
                     
@@ -308,6 +322,10 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
         # get dict for this day
         date = file_date
         date_dict = dates_dict.get(date, dict())
+        # skip file if date_dict not existing
+        if not date_dict: #empty dicts are False
+            print(f"No robot data existing for this date: {date}")
+            continue
 
         # finish last run of the previous date
         if prev_date is not None:

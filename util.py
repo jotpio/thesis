@@ -29,34 +29,36 @@ def get_all_positions(dates_dict, challenges=False, successful=False):
             runs = date_dict["runs"]
         # combine positions
         for run in runs:
-            run_positions = date_dict["positions"][run[0]:run[1]]
+            run_positions = date_dict["positions"][run[0]:run[1]+1]
             all_positions.extend(run_positions)
             
     return all_positions
 
 
-def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.19, checkall=False):    
+def find_corresponding_timestamp(timestamps, timestamp, current_lineid, timedelta=0.19, checkrange=30, checkall=False):    
     compare_ts = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f')
-    
+    #print(timestamp, current_lineid, timestamps[current_lineid])
     # check full timestamp array; start at current_lineid
     if checkall:
         for i in range(current_lineid, len(timestamps)):
             ts = datetime.strptime(timestamps[i], '%Y-%m-%d %H:%M:%S,%f')
             delta = np.abs((compare_ts - ts).total_seconds())
-            
+            #print(f"{timestamps[i]}")
+            #print(delta, timedelta)
             if delta < timedelta:
                 return i
             
         return -1 # not found
     
-    # check only timestamp at current_lineid
+    # check only timestamp at current_lineid and next one
     else:
-        if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < timedelta:
-            return current_lineid
-        else:
-            # print(f"timestamp not closer than {timedelta} seconds ({timestamps[current_lineid], timestamp}")
-            # print(current_lineid, timestamps[current_lineid], timestamp, timestamps)
-            return -1
+        return_id = -1
+        for i in range(checkrange):
+            if np.abs((compare_ts - datetime.strptime(timestamps[current_lineid+i], '%Y-%m-%d %H:%M:%S,%f')).total_seconds()) < timedelta:
+                return_id = current_lineid+i
+                # print(f"Found timestamp ({current_lineid+i}) after {i} skipped timestamps!")
+                break
+        return return_id
     
     
     
@@ -70,7 +72,7 @@ def get_fish_pos_per_run(all_fish_pos, runs):
         return []
     for id_run, run in enumerate(runs):
         fish_pos_run = []
-        run_fish = all_fish_pos[run[0]:run[1]]
+        run_fish = all_fish_pos[run[0]:run[1]+1]
         
         for all_fish_in_ts in run_fish:
             fish_pos_ts = []
@@ -91,7 +93,7 @@ def get_fish_following_per_run(all_fish, runs):
         return []
     for id_run, run in enumerate(runs):
         fish_following_run = []
-        run_fish = all_fish[run[0]:run[1]]
+        run_fish = all_fish[run[0]:run[1]+1]
         
         for all_fish_in_ts in run_fish:
             fish_following_ts = []
@@ -148,23 +150,35 @@ def get_distance_to_goal(pos):
     return np.sqrt(dx*dx + dy*dy)
 
 
-def save_dates_to_npz(dates_dict):
+def save_dates_to_npz(dates_dict, only_challenges=True):
+    if only_challenges:
+        filter_dates_dict_for_challenge_runs(dates_dict)
+    
     # save day by day into npy files
     for key in dates_dict.keys():
         date = dates_dict[key]
-        file_name = f".\loaded_data\dates_dict_{key}.npy"
+        if only_challenges:
+            file_name = f".\loaded_data\challenges_dates_dict_{key}.npy"
+        else:
+            file_name = f".\loaded_data\dates_dict_{key}.npy"
         print(f"Saving {key} to {file_name}")
         np.save(file_name, date, allow_pickle=True)
         
-def load_dates_from_npz(start_date, end_date):
+def load_dates_from_npz(start_date, end_date, only_challenges=True):
     # load dates from npy files
     print("Loading data from npz files.....")
     current_working_dir = os.getcwd()
     current_dirname = os.path.basename(current_working_dir)
     if current_dirname == 'streamlit':
-        date_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
+        if only_challenges:
+            date_files = glob.glob(f".\..\loaded_data\challenges_dates_dict_*.npy")
+        else:
+            date_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
     elif current_dirname == 'thesis':
-        date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
+        if only_challenges:
+            date_files = glob.glob(f".\loaded_data\challenges_dates_dict_*.npy")
+        else:
+            date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
     else:
         print("Could not find loaded data in current working directory!")
         return None
@@ -226,11 +240,11 @@ def calculate_velocity_speed_acceleration(date_dict):
 
 def calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps):
     # timestamp deltas for velocity and speed
-    timestamps_run = dt_timestamps[run[0]:run[1]]
+    timestamps_run = dt_timestamps[run[0]:run[1]+1]
     timedeltas_run = [delta.total_seconds() for delta in np.diff(timestamps_run)]
 
-    posxdeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1],0])
-    posydeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1],1])
+    posxdeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1]+1,0])
+    posydeltas_run = np.diff(np.array(date_dict["positions"])[run[0]:run[1]+1,1])
 
     velocity_x_run = posxdeltas_run / timedeltas_run
     velocity_y_run = posydeltas_run / timedeltas_run
@@ -339,3 +353,77 @@ def flatten_2d_list(input_list):
         for e in i:
             flat_list.append(e)
     return flat_list
+
+def tolerant_mean(arrs):
+    lens = [len(i) for i in arrs]
+    arr = np.ma.empty((np.max(lens),len(arrs)))
+    arr.mask = True
+    for idx, l in enumerate(arrs):
+        arr[:len(l),idx] = l
+    return arr.mean(axis = -1), arr.std(axis=-1)
+
+def equalize_arrays(arrs, fillvalue):
+    max_len = max([len(i) for i in arrs])
+    print(max_len)
+    
+    for arr in arrs:
+        arr.extend([fillvalue for i in range(max_len-len(arr))])
+    return arrs
+
+
+def filter_date_dict_for_challenge_runs(date_dict, challenge_runs, ids_challenge_runs):
+    filtered_date_dict = dict()
+    filtered_date_dict['timestamps'] = []
+    filtered_date_dict['positions'] = []
+    filtered_date_dict['orientation'] = []
+    filtered_date_dict['rotation'] = []
+    filtered_date_dict['runs'] = []
+    filtered_date_dict['day_length'] = date_dict['day_length']
+    filtered_date_dict['run_lengths'] = []
+    filtered_date_dict['difficulties'] = []
+    filtered_date_dict['fish'] = []
+    filtered_date_dict['challenges'] = []
+    filtered_date_dict['successful'] = []
+    
+    run_pointer = 0
+    for challenge_tuple in zip(challenge_runs, ids_challenge_runs):
+        #print(challenge_tuple)
+        filtered_date_dict['timestamps'].extend(date_dict['timestamps'][challenge_tuple[0][0]:challenge_tuple[0][1]+1])
+        filtered_date_dict['positions'].extend(date_dict['positions'][challenge_tuple[0][0]:challenge_tuple[0][1]+1])
+        filtered_date_dict['orientation'].extend(date_dict['orientation'][challenge_tuple[0][0]:challenge_tuple[0][1]+1])
+        filtered_date_dict['rotation'].extend(date_dict['rotation'][challenge_tuple[0][0]:challenge_tuple[0][1]+1])
+        filtered_date_dict['runs'].append([run_pointer, run_pointer + (date_dict['runs'][challenge_tuple[1]][1] - date_dict['runs'][challenge_tuple[1]][0])])
+        run_pointer = run_pointer + date_dict['runs'][challenge_tuple[1]][1] - date_dict['runs'][challenge_tuple[1]][0] + 1
+        filtered_date_dict['run_lengths'].append(date_dict['run_lengths'][challenge_tuple[1]])
+        filtered_date_dict['difficulties'].append(date_dict['difficulties'][challenge_tuple[1]])
+        filtered_date_dict['fish'].extend(date_dict['fish'][challenge_tuple[0][0]:challenge_tuple[0][1]+1])
+        filtered_date_dict['challenges'].append(date_dict['challenges'][challenge_tuple[1]])
+        filtered_date_dict['successful'].append(date_dict['successful'][challenge_tuple[1]])
+        
+        
+        # sanity check filtered data
+        
+        # all timeseries data array should be the same length
+        og_len_ts = len(date_dict['timestamps'])
+        len_ts = len(filtered_date_dict['timestamps'])
+        assert len_ts == len(filtered_date_dict['positions']) == len(filtered_date_dict['orientation']) == len(filtered_date_dict['rotation']) == len(filtered_date_dict['fish'])
+        
+        # overall length of runs must be the same as timeseries length
+        overall_run_length = filtered_date_dict['runs'][-1][1] - filtered_date_dict['runs'][0][0] + 1
+        assert len_ts == overall_run_length, f"timestamp length ({len_ts}) not equal to overall run length ({overall_run_length})"
+
+    
+    return filtered_date_dict
+
+def filter_dates_dict_for_challenge_runs(dates_dict):
+    for date_dict_key in dates_dict:
+        date_dict = dates_dict[date_dict_key]
+        runs = date_dict['runs']
+        challenges = date_dict['challenges']
+        challenge_runs, ids_challenge_runs = get_challenge_runs(runs, challenges)
+
+        filtered_date_dict = filter_date_dict_for_challenge_runs(date_dict, challenge_runs, ids_challenge_runs)
+        #print(date_dict['successful'][0:10], filtered_date_dict['successful'][0:10])
+        dates_dict[date_dict_key] = filtered_date_dict
+        
+        print(f"Filtered challenge runs out of {date_dict_key}")
