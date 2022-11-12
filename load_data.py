@@ -1,10 +1,11 @@
 import glob, os, time
-from util import parse_number_array_from_string, find_corresponding_timestamp
+from util import parse_number_array_from_string, find_corresponding_timestamp, dates_string_to_datetime, check_if_date_in_range, clean_line, check_line
 from datetime import datetime
 import json
 import numpy as np
+from tqdm.notebook import tqdm_notebook
 
-def load_robot_data(robot_dir, start_date=None, end_date=None):
+def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False):
     '''
     robot_dir:     directory of robot log files
     start_date:    starting date from which to get data from
@@ -16,38 +17,34 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
     file_paths = glob.glob(robot_dir+"/robot.*")
     
     # dates to datetime
-    if start_date is not None:
-        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
-    if end_date is not None:
-        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    start_date_dt = dates_string_to_datetime(start_date)
+    end_date_dt = dates_string_to_datetime(end_date)
     
     all_tic = time.time()
     # load from robot files
     dates_dict = {}
-    for id_file_path, file_path in enumerate(file_paths):
+    for id_file_path, file_path in enumerate(tqdm_notebook(file_paths, desc="Loading robot files...")):
         tic = time.time()
-        # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
-        split_file_path = file_name.split(".")
         
-        if len(split_file_path) > 1:
-            file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
-            file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
-            if start_date is not None and file_date_dt < start_date_dt:
-                continue
-            if end_date is not None and file_date_dt > end_date_dt:
-                continue
-        else:
+        # check if file name irregular 
+        split_file_path = file_name.split(".")
+        if len(split_file_path) <= 1:
             print(f"Skipped {file_path}")
             continue
         
+        # check if file date in range
+        file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
+        file_date_dt = dates_string_to_datetime(file_date)
+        if not check_if_date_in_range(file_date_dt, start_date_dt, end_date_dt):
+            continue
         
         # get dict for this day
-        date = file_date
-        date_dict = dates_dict.get(date, dict())
+        date_dict = dates_dict.get(file_date, dict())
         
         # init arrays for new date_dict 
         if len(date_dict.keys()) == 0:
+            print(f"\tInitializing new date_dict for {file_date}...")
             date_dict["timestamps"] = []
             date_dict["positions"] = []
             date_dict["adjusted_positions"] = []
@@ -66,33 +63,13 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
         with open(file_path, "r") as file:
             print(f"Loading {file_path}...")
             for id_line, line in enumerate(file):
-                # remove \n
-                line = line.replace("\n", "")
+                
+                # clean and check line
+                line, split_line, timestamp, rest = clean_line(line, id_line, file_path, rest_cut_off=28)
+                if not check_line(split_line, id_line, file_path):
+                    continue
 
-                # remove \x00
-                line = line.replace("\x00", "")
-
-                # split line at white spaces
-                split_line = line.split(" ")
-
-                # check if line is irregular
-                if len(split_line) == 1: #no whitespace detected
-                    print(f"Irregular line ({id_line}) in {file_path}!")
-                    continue #ignore line
-
-                # get prefixed time stamp
-                date = split_line[0]
-                if date.startswith("\x00"):
-                    print(file_path, id_line, line)
-                # print(date)
-                timestamp = f"{split_line[0]} {split_line[1]}"
-                rest = line[28:]
-
-                # # skip lines without positions
-                # if split_line[3] == "Started":
-                #     continue
-
-
+                # analyze line
                 if split_line[3] != "Started":
                     # update date dict with file data
                     timestamps = date_dict.get("timestamps",[])
@@ -120,104 +97,88 @@ def load_robot_data(robot_dir, start_date=None, end_date=None):
                     date_dict["rotation"] = rotations
 
                 # update date_dict in date_dicts
-                dates_dict[date] = date_dict
+                dates_dict[file_date] = date_dict
+            
+            #if len(date_dict['timestamps']) > 0:
+                #print(f"\t{date}: Current timestamp range: {date_dict['timestamps'][0]} - {date_dict['timestamps'][-1]}")
 
             file.close()
             toc=time.time()
-            print(f"{toc-tic:.4f} seconds elapsed")
+            print(f"\t{toc-tic:.4f} seconds elapsed")
 
     print(f"{len(dates_dict.keys())} day(s) loaded!")
     all_toc=time.time()
     print(f"Loading robot files took {all_toc-all_tic} seconds")
+    
     return dates_dict
 
 
-def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
+def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None, tqdm=False):
     '''
     fish_dir:      directory of fish log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
+
+    prev_date = None # previous date
+    all_tic = time.time()
+    current_line_id = 0
+    
     print(f"Loading fish data from {fish_dir}")
     # get robot files
     file_paths = glob.glob(fish_dir+"/fish.*")
     
     # dates to datetime
-    if start_date is not None:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d')
-    if end_date is not None:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    start_date_dt = dates_string_to_datetime(start_date)
+    end_date_dt = dates_string_to_datetime(end_date)
     
     # load from fish files
     if dates_dict is None:
         dates_dict = dict()
-        
-    # previous date
-    prev_date = None
-            
-    all_tic = time.time()
-    current_line_id = 0
-    for id_file_path, file_path in enumerate(file_paths):
+    
+    # load files one by one
+    for id_file_path, file_path in enumerate(tqdm_notebook(file_paths, desc="Loading fish files...")):
         tic = time.time()
-        # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
+        
+        # check if file name irregular 
         split_file_path = file_name.split(".")
-                
-        if len(split_file_path) > 1:
-            file_date = split_file_path[1][:10] #[fish][<YYYY-mm-dd>_HH]
-            file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
-            if start_date is not None and file_date_dt < start_date:
-                continue
-            if end_date is not None and file_date_dt > end_date:
-                continue
-        else:
+        if len(split_file_path) <= 1:
             print(f"Skipped {file_path}")
+            continue
+                
+        # check if file date in range
+        file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
+        file_date_dt = dates_string_to_datetime(file_date)
+        if not check_if_date_in_range(file_date_dt, start_date_dt, end_date_dt):
             continue
             
         # get dict for this day
-        date = file_date
-        date_dict = dates_dict.get(date, dict())
+        date_dict = dates_dict.get(file_date, dict())
         
-        if not date_dict:
-            continue
+        # skip file if date_dict not existing
+        if not date_dict: #empty dicts are False
+            print(f"No robot data existing for this date: {file_date}")
+            continue   
+            
         
         # reset current line id if new date started
         if prev_date is not None:
-            if prev_date != date:
+            if prev_date != file_date:
                 current_line_id = 0 
-        prev_date = date
+        prev_date = file_date
             
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
             print(f"Loading {file_path}...")
             
             for id_line, line in enumerate(file):
-                # remove \n
-                line = line.replace("\n", "")
-
-                # remove \x00
-                line = line.replace("\x00", "")
+                # clean and check line
+                line, split_line, timestamp, rest = clean_line(line, id_line, file_path, rest_cut_off=28)
+                if not check_line(split_line, id_line, file_path):
+                    continue       
                 
-                # remove U+0000
-                line = line.replace(u"\u0000", "")
-
-                # split line at white spaces
-                split_line = line.split(" ")
-
-                # check if line is irregular
-                if len(split_line) == 1: #no whitespace detected
-                    print(f"Irregular line ({id_line}) in {file_path}!")
-                    continue #ignore line
-
-                # get prefixed time stamp
-                date = split_line[0]
-                if date.startswith("\x00"):
-                    print(file_path, id_line, line)
-                # print(date)
-                timestamp = f"{split_line[0]} {split_line[1]}"
-                rest = line[28:]           
-                
-                # 
+                # analyze line
                 if split_line[3] != "Started" and "Started" not in line:                  
                     # make line json compliant
                     rest = rest.replace("\'", "\"")
@@ -259,93 +220,91 @@ def load_fish_data(fish_dir, dates_dict=None, start_date=None, end_date=None):
                     date_dict["fish"] = fish_array
                     
                 # update date_dict in date_dicts
-                dates_dict[date] = date_dict
+                dates_dict[file_date] = date_dict
                 
             file.close()
             toc=time.time()
-            print(f"{toc-tic:.4f} seconds elapsed")
+            print(f"\t{toc-tic:.4f} seconds elapsed")
 
     all_toc=time.time()
     print(f"Loading fish files took {all_toc-all_tic} seconds")            
                 # print(timestamp)
                 # print(type(list(rest)))
+                  
     return dates_dict
 
-def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=None):
+def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=None, tqdm=False):
     # load behavior output data and detect challenges
     '''
     behavior_dir:  directory of behavior log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
+    
+    prev_date = None # previous date
+    timestamp_pointer = 0 # current timestamp id
+    all_tic = time.time()
+    
     print(f"Loading behavior data from {behavior_dir}")
 
     # get robot files
     file_paths = glob.glob(behavior_dir+"/behavior_prints.*")
 
     # dates to datetime
-    if start_date is not None:
-        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
-    if end_date is not None:
-        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    start_date_dt = dates_string_to_datetime(start_date)
+    end_date_dt = dates_string_to_datetime(end_date)
 
     # load from behavior files
     if dates_dict is None:
         dates_dict = {}
-
-    # previous date
-    prev_date = None
-
-    # current timestamp id 
-    timestamp_pointer = 0
-
-    all_tic = time.time()
     
     # load files one by one
-    for id_file_path, file_path in enumerate(file_paths):
+    for id_file_path, file_path in enumerate(tqdm_notebook(file_paths, desc="Loading beahavior files...")):
         tic = time.time()
         # check if file in given date range and skip if not
         file_name = os.path.basename(file_path)
+        
+        # check if file name irregular 
         split_file_path = file_name.split(".")
-
-        if len(split_file_path) > 1:
-            file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
-            file_date_dt = datetime.strptime(file_date, '%Y-%m-%d')
-            if start_date is not None and file_date_dt < start_date_dt:
-                continue
-            if end_date is not None and file_date_dt > end_date_dt:
-                continue
-        else:
+        if len(split_file_path) <= 1:
             print(f"Skipped {file_path}")
             continue
 
+        # check if file date in range
+        file_date = split_file_path[1][:10] #[robot][<YYYY-mm-dd>_HH]
+        file_date_dt = dates_string_to_datetime(file_date)
+        if not check_if_date_in_range(file_date_dt, start_date_dt, end_date_dt):
+            continue         
+            
+            
         # get dict for this day
-        date = file_date
-        date_dict = dates_dict.get(date, dict())
+        date_dict = dates_dict.get(file_date, dict())
+        
         # skip file if date_dict not existing
         if not date_dict: #empty dicts are False
-            print(f"No robot data existing for this date: {date}")
+            print(f"No robot data existing for this date: {file_date}")
             continue
 
-        # finish last run of the previous date
+        # finish last run of the previous date and reset timestamp pointer
         if prev_date is not None:
-            if prev_date != date:
+            if prev_date != file_date:
+                print(f"New day {file_date}! Resetting timestamp pointer and finishing off last run of previous day")
                 # finish last run of previous date (append last timestamp to last run)
                 prev_date_dict = dates_dict[prev_date]
 
                 prev_runs = prev_date_dict["runs"]
                 if len(prev_runs) > 0 and len(prev_runs[-1]) == 1:
-                    timestamps = prev_date_dict["timestamps"]
+                    prev_timestamps = prev_date_dict["timestamps"]
                     last_run = prev_runs[-1]
                     if len(last_run):
-                        last_run.append(len(timestamps)-1)
+                        last_run.append(len(prev_timestamps)-1)
                         prev_date_dict["runs"] = prev_runs
                         dates_dict[prev_date] = prev_date_dict
 
                 # set timestamp id to zero
                 timestamp_pointer = 0
-
-        prev_date = date
+                
+        prev_date = file_date
 
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
@@ -355,6 +314,7 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
             date_runs = date_dict["runs"]
             date_challenges = date_dict["challenges"]
             date_challenge_difficulties = date_dict["difficulties"]
+            
 
             # get last run of current date
             if date_runs != [] and date_runs is not None:
@@ -369,23 +329,10 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
             
             # load line by line
             for id_line, line in enumerate(file):
-                # remove \n
-                line = line.replace("\n", "")
-                # remove \x00
-                line = line.replace("\x00", "")
-                # split line at white spaces
-                split_line = line.split(" ")
-                # check if line is irregular
-                if len(split_line) == 1: #no whitespace detected
-                    print(f"Irregular line ({id_line}) in {file_path}!")
-                    continue #ignore line
-
-                # get prefixed time stamp
-                date = split_line[0].replace("\t","")
-                if date.startswith("\x00"):
-                    print(file_path, id_line, line)
-                current_timestamp = f"{split_line[0]} {split_line[1]}".replace("\t","")
-                rest = line[27:]
+                # clean and check line
+                line, split_line, timestamp, rest = clean_line(line, id_line, file_path, rest_cut_off=27)
+                if not check_line(split_line, id_line, file_path):
+                    continue
 
                 # clean up message
                 rest_split = rest.split('-')
@@ -396,11 +343,14 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                 ''' 
                 filter message to get relevant information
                     - add runs: challenge and non-challenge
+                    - get challenge runs
+                    - get difficulty of challenge runs
 
                 '''
                 # get start of new run (joystick connected)
                 if message.startswith("JOYSTICK: Server connected by"):
                     # find corresponding timestamp and set this run to non-challenge run
+                    current_timestamp = timestamp.replace("\t","")
                     id_timestamp = find_corresponding_timestamp(date_timestamps, current_timestamp, timestamp_pointer, timedelta=0.5, checkall=True)
                     if id_timestamp != -1:
                         # print(f"\tJOYSTICK: Found in {id_timestamp}-th timestamp! {date_timestamps[id_timestamp], current_timestamp}")
@@ -430,6 +380,7 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                         timestamp_pointer = id_timestamp
                     else:
                         print(f"\tJOYSTICK: Did not find corresponding timestamp for this message! {current_timestamp}")
+                        print(current_timestamp, timestamp_pointer, date_timestamps[timestamp_pointer], len(date_timestamps))
 
 
     #             # filter by non-challenge runs
@@ -506,20 +457,26 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
                         date_challenges[-1] = True # update current run to challenge
                     else:
                         print(f"Received challenge message before joystick message! {current_timestamp, id_line, file_path}")
+                        
                     # add difficulty
-                    if message == "COMMAND: Received ['reset_fish', 2]":
-                        date_challenge_difficulties[-1] = 2
-                    elif message == "COMMAND: Received ['reset_fish', 4]":
-                        date_challenge_difficulties[-1] = 4
-                    elif message == "COMMAND: Received ['reset_fish', 6]":
-                        date_challenge_difficulties[-1] = 6
+                    #print(date_challenge_difficulties, current_timestamp)
+                    assert len(date_challenge_difficulties) > 0, f"No previous joystick found / difficulty list empty. {current_timestamp}"
+                    if len(date_challenge_difficulties) > 0:
+                        if message == "COMMAND: Received ['reset_fish', 2]":
+                            date_challenge_difficulties[-1] = 2
+                        elif message == "COMMAND: Received ['reset_fish', 4]":
+                            date_challenge_difficulties[-1] = 4
+                        elif message == "COMMAND: Received ['reset_fish', 6]":
+                            date_challenge_difficulties[-1] = 6
+                        else:
+                            assert False, f"Some kind of error in difficulty recognition!\nmessage: {message}"
                     else:
-                        assert False, f"Some kind of error in difficulty recognition!\nmessage: {message}"
+                        print(f"Received challenge message before joystick message! {current_timestamp, id_line, file_path}")
                     
 
 
                 # update date dict in dates_dict
-                dates_dict[date] = date_dict
+                dates_dict[file_date] = date_dict
 
             # file done; add current run to all runs
             if current_run != [] and current_run is not None:
@@ -529,7 +486,7 @@ def load_behavior_data(behavior_dir, dates_dict=None, start_date=None, end_date=
             # close file
             file.close()
             toc=time.time()
-            print(f"{toc-tic} seconds elapsed")
+            print(f"\t{toc-tic} seconds elapsed")
 
 
     # finish last run of last date (append last timestamp to last run)

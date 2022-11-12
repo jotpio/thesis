@@ -427,3 +427,40 @@ def filter_dates_dict_for_challenge_runs(dates_dict):
         dates_dict[date_dict_key] = filtered_date_dict
         
         print(f"Filtered challenge runs out of {date_dict_key}")
+        
+def check_if_date_in_range(date, start, end):
+    if (start is not None and date < start) or (end is not None and date > end):
+        return False
+    return True
+
+def dates_string_to_datetime(date):
+    # date to datetime
+    if date is not None:
+        date_dt = datetime.strptime(date, '%Y-%m-%d')
+    return date
+
+def clean_line(line, id_line, file_path, rest_cut_off):
+    # remove \n
+    line = line.replace("\n", "")
+    # remove \x00
+    line = line.replace("\x00", "")
+    # split line at white spaces
+    split_line = line.split(" ")
+
+    # get prefixed time stamp
+    ts_date = split_line[0].replace("\t","")
+    if ts_date.startswith("\x00"):
+        print(file_path, id_line, line)
+    # print(ts_date)
+    timestamp = f"{split_line[0]} {split_line[1]}".replace("\t","")
+
+    rest = line[rest_cut_off:]
+    
+    return line, split_line, timestamp, rest
+
+def check_line(split_line, id_line, file_path):
+    # check if line is irregular
+    if len(split_line) == 1: #no whitespace detected
+        print(f"Irregular line ({id_line}) in {file_path}!")
+        return False #ignore line
+    return True

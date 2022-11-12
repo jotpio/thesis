@@ -260,6 +260,7 @@ def plot_position_hexmap(pos, ax=None):
     ax.invert_yaxis()
     ax.hexbin(x,y, gridsize=80, bins='log', cmap='inferno') # use log bins to ignore positions where robot stands still
     plt.show()
+
     
 def plot_starts_ends(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True, show=True):
     # all start and end positions challenge runs
@@ -326,9 +327,9 @@ def plot_starts_ends(dates_dict, start_date=None, end_date=None, challenges=True
         else:
             return fig
     else:
-        return plt.figure()
-        
-            
+        return plt.figure()       
+
+    
 def plot_rotations_and_heatmap(dates_dict, start_date=None, end_date=None, challenges=True, only_successful=True, ignore_robot_standing=True, polar_density=True, show=True):
 
     dates_keys = dates_dict.keys()
@@ -425,6 +426,7 @@ def plot_rotations_and_heatmap(dates_dict, start_date=None, end_date=None, chall
         plt.show()
     else:
         return fig
+
     
 def plot_inter_individual_distances(dates_dict_robot_fish, start_date=None, end_date=None, challenges=True, only_successful=True, bins=20, show=True):
     dates_keys = dates_dict_robot_fish.keys()
@@ -549,6 +551,7 @@ def plot_inter_individual_distances(dates_dict_robot_fish, start_date=None, end_
             plt.show()
             
     return figs1, figs2
+   
     
 def plot_run_length_hist(dates_dict, start_date=None, end_date=None, bin_size=10, challenges=True, only_successful=True, show=True):
     dates_keys = dates_dict.keys()
@@ -598,8 +601,8 @@ def plot_run_length_hist(dates_dict, start_date=None, end_date=None, bin_size=10
         plt.show()
     else:
         return fig
-    
-    
+
+
 def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, only_successful=True, show=True):
     dates_keys = dates_dict.keys()
 
@@ -658,6 +661,7 @@ def plot_robot_distance_goal(dates_dict, start_date, end_date, challenges=True, 
             plt.show()
             
     return figs
+
 
 def plot_following1(dates_dict, start_date=None, end_date=None, only_successful=True, challenges=True, show=True):
     dates_keys = dates_dict.keys()
@@ -768,6 +772,7 @@ def plot_following1(dates_dict, start_date=None, end_date=None, only_successful=
     else:
         return fig
     
+
 def plot_runlength_dist_goal_target_corr(dates_dict, start_date=None, end_date=None, only_successful=True, challenges=True, show=True):
     dates_keys = dates_dict.keys()
 

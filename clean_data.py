@@ -72,7 +72,7 @@ def start_check_if_num_fish_constant_for_run(run_fish, run_difficulty, run, debu
                 current_cut_off = id_ts
             else:
                 if debug:
-                    print(f"Later jump in number of fish found which is not in first consecutive time steps({current_cut_off} and {id_ts}) : {run}, number of fish:  {run_difficulty+1} expected, got  {len(fish_in_ts)}")
+                    print(f"\tLater jump in number of fish found which is not in first consecutive time steps({current_cut_off} and {id_ts}) : {run}, number of fish:  {run_difficulty+1} expected, got  {len(fish_in_ts)}")
                     break
             # print(f"{run_difficulty} and {len(fish_in_ts)-1} different in timestep {id_ts}")
             
@@ -81,11 +81,11 @@ def start_check_if_num_fish_constant_for_run(run_fish, run_difficulty, run, debu
         # check if run long enough to be cut off
         if (run[1] - run[0]) > current_cut_off:
             if debug:
-                print(f"Cutting off {current_cut_off+1} from beginning of {run} because number of fish not consistent with difficulty")
+                print(f"\tCutting off {current_cut_off+1} from beginning of {run} because number of fish not consistent with difficulty")
             run[0] = run[0] + current_cut_off + 1
         else:
             if debug:
-                print(f"Run too short to be cut off... Removing instead: (run-{run}; cut-off:{current_cut_off}; run length:{run[1] - run[0]}) - START const num fish")
+                print(f"\tRun too short to be cut off... Removing instead: (run-{run}; cut-off:{current_cut_off}; run length:{run[1] - run[0]}) - START const num fish")
             run[1] = run[0] # set run to length 1 to later be removed
                 
     # print(f"inside diff {run}")
@@ -113,11 +113,11 @@ def start_check_if_target_in_fixed_starting_pos(fish_pos_this_run, run, max_dist
             # check if run long enough to be cut off
             if (run[1] - run[0]) > current_cut_off:
                 if debug:
-                    print(f"Cutting off {current_cut_off+1} from beginning of {run} because fish is not in starting position")
+                    print(f"\tCutting off {current_cut_off+1} from beginning of {run} because fish is not in starting position")
                 run[0] = run[0] + current_cut_off+1
             else:
                 if debug:
-                    print(f"Run to short to be cut off... Removing instead: (run-{run}; cut-off:{current_cut_off}; run length:{run[1] - run[0]}) - START target pos")
+                    print(f"\tRun to short to be cut off... Removing instead: (run-{run}; cut-off:{current_cut_off}; run length:{run[1] - run[0]}) - START target pos")
                     run[1] = run[0]
         
     return run, current_cut_off+1
@@ -133,7 +133,7 @@ def end_check_if_num_fish_constant_for_run(run_fish, run_difficulty, run, debug=
         for id_ts, fish_in_ts in enumerate(run_fish):
             if run_difficulty != len(fish_in_ts)-1:
                 if debug:
-                    print(f"END: {run_difficulty} and {len(fish_in_ts)-1} different in timestep {id_ts}")
+                    print(f"\tEND: {run_difficulty} and {len(fish_in_ts)-1} different in timestep {id_ts}")
                 cut_off=id_ts
                 break #stop when found
 
@@ -142,11 +142,11 @@ def end_check_if_num_fish_constant_for_run(run_fish, run_difficulty, run, debug=
             # check if run long enough to be cut off
             if (run[1] - run[0]) > cut_off:
                 if debug:
-                    print(f"Cutting off at index {cut_off+1} from end of {run} because number of fish not consistent with difficulty")
+                    print(f"\tCutting off at index {cut_off+1} from end of {run} because number of fish not consistent with difficulty")
                 run[1] = run[0] + cut_off-1
             else:
                 if debug:
-                    print(f"Run to short to be cut off... Removing instead: run-{run}, cut_off:{cut_off}, run length:{run[1] - run[0]} - END const num fish")
+                    print(f"\tRun to short to be cut off... Removing instead: run-{run}, cut_off:{cut_off}, run length:{run[1] - run[0]} - END const num fish")
                     run[1] = run[0]
         # print(f"inside diff {run}")
     return run, cut_off
