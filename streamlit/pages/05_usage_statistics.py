@@ -25,10 +25,11 @@ import data_model
 import plot_usage_statistics
 import ui_helper
 
-start_date = data_model.start_date
-end_date = data_model.end_date
+
 
 def main():
+    start_date = data_model.start_date
+    end_date = data_model.end_date
     sidebar, start_date, end_date, challenges, only_successful = ui_helper.setup_sidebar(start_date, end_date)   
     
     if data_model.dates_dict is not None:
