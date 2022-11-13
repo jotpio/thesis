@@ -476,11 +476,10 @@ def plot_inter_individual_distances(dates_dict_robot_fish, start_date=None, end_
 
         for id_run, run in enumerate(runs):
             fish_pos_this_run = fish_pos_runs[id_run]
-            robot_pos_run = np.array(date_dict['positions'][run[0]:run[1]])
+            robot_pos_run = np.array(date_dict['positions'][run[0]:run[1]+1])
             # sanity check
             if len(fish_pos_this_run) != len(robot_pos_run):
-                print("Wrong array lengths: fish and robot")
-                assert False
+                assert False, f"Wrong array lengths: fish {len(fish_pos_this_run)} and robot {len(robot_pos_run)}"
             fish1_pos_this_run = np.array([fish[0] for fish in fish_pos_this_run]) # get first fish for each timestamp as it always is the target fish
             # plot all runs in one 
             ii_distances_r_f1_run = np.linalg.norm(fish1_pos_this_run-robot_pos_run, axis=1)
@@ -834,7 +833,7 @@ def plot_runlength_dist_goal_target_corr(dates_dict, start_date=None, end_date=N
             # get dist to target fish
             all_fish_pos_this_run = fish_pos_runs[id_run]       
             fish1_pos_this_run = np.array([fish[0] for fish in all_fish_pos_this_run])
-            robot_pos_run = np.array(date_dict['positions'][run[0]:run[1]])
+            robot_pos_run = np.array(date_dict['positions'][run[0]:run[1]+1])
 
             initial_distance = distance(fish1_pos_this_run[0], robot_pos_run[0])
             day_initial_dist_robot_target_fish.append(initial_distance)

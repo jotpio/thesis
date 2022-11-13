@@ -13,38 +13,29 @@ import data_model
 import load_data
 import util
 import plot
-import plot_usage_statistics 
-
-start_date = data_model.start_date
-end_date = data_model.end_date
+import plot_usage_statistics
+import ui_helper
 
 def main():
-    '''
-        PAGE
-    '''
+    start_date = data_model.start_date
+    end_date = data_model.end_date
+    
     st.title("Individual robot runs")
     st.write("This page shows plots and data for individual robot runs")
     st.markdown("""---""")
     
-    # filter parameters
-    st.subheader("Here you can set filter parameters to get specific runs")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        challenges = st.checkbox("only challenge runs")
-        only_successful = st.checkbox("only successful runs")
+    sidebar, start_date, end_date, challenges, only_successful = ui_helper.setup_sidebar(start_date, end_date)    
 
-        if only_successful:
-            descriptor_runs = "successful challenge runs"
-        elif challenges:
-            descriptor_runs = "challenge runs"
-        else:
-            descriptor_runs = "runs"
-    number_of_runs = get_number_of_runs(only_successful, challenges)
+    if only_successful:
+        descriptor_runs = "successful challenge runs"
+    elif challenges:
+        descriptor_runs = "challenge runs"
+    else:
+        descriptor_runs = "runs"
+    #number_of_runs = get_number_of_runs(only_successful, challenges)
     
-    with col2:
-        st.metric(descriptor_runs, number_of_runs)
-        st.caption(f"in selected timeframe {start_date} - {end_date}")
+    #st.metric(descriptor_runs, number_of_runs)
+    #st.caption(f"in selected timeframe {start_date} - {end_date}")
 
     st.markdown("""---""")
     

@@ -12,19 +12,19 @@ import data_model
 import load_data
 import util
 import plot
-import plot_usage_statistics 
-
-start_date = data_model.start_date
-end_date = data_model.end_date
-
+import plot_usage_statistics
+import ui_helper
 
 def main():
-    '''
-        PAGE
-    '''
+    start_date = data_model.start_date
+    end_date = data_model.end_date
+    
     st.title("Robot and target fish")
     st.write("This page shows plots and data for robot, target area and target fish relations")
     st.markdown("""---""")
+    
+    # sidebar
+    sidebar, start_date, end_date, challenges, only_successful = ui_helper.setup_sidebar(start_date, end_date)
     
     with st.expander("inter individual distances between robot and target fish (daily)"):
         col1, col2 = st.columns(2)

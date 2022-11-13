@@ -21,17 +21,8 @@ st.title("Robot data")
 st.write("""
         This page shows general robot related plots like position heatmaps and average orientations.
         """)
-
-# "with" notation
+# sidebar
 sidebar, start_date, end_date, challenges, only_successful = ui_helper.setup_sidebar(start_date, end_date)
-# with st.sidebar:
-#     start_date = st.date_input(
-#             "Start date",
-#             # datetime.date(2022, 2, 1))
-#             datetime.datetime.strptime(str(start_date), "%Y-%m-%d").date()).strftime("%Y-%m-%d")
-#     end_date = st.date_input(
-#             "End date",
-#             datetime.datetime.strptime(str(end_date), "%Y-%m-%d").date()).strftime("%Y-%m-%d")
 
 # plots
 tab1, tab2, tab3 = st.tabs(["all robot positions", "avg rot and pos", "starts and ends"])
