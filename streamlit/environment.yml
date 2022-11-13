@@ -7,5 +7,6 @@ dependencies:
   - matplotlib
   - seaborn
   - tqdm
-  - fpdf2
+  - pip:
+     - fpdf2
 prefix: C:\Users\jopio\miniconda3\envs\cloud_streamlit
