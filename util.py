@@ -2,6 +2,7 @@ import os, re
 import numpy as np
 from datetime import datetime 
 import glob
+from deta import Deta
 
 from datetime import date
 
@@ -164,7 +165,7 @@ def save_dates_to_npz(dates_dict, only_challenges=True):
         print(f"Saving {key} to {file_name}")
         np.save(file_name, date, allow_pickle=True)
         
-def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None):
+def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None, drive=None):
     # load dates from npy files
     print("Loading data from npz files.....")
     if local:
