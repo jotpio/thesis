@@ -164,39 +164,42 @@ def save_dates_to_npz(dates_dict, only_challenges=True):
         print(f"Saving {key} to {file_name}")
         np.save(file_name, date, allow_pickle=True)
         
-def load_dates_from_npz(start_date, end_date, only_challenges=True):
+def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True):
     # load dates from npy files
     print("Loading data from npz files.....")
-    current_working_dir = os.getcwd()
-    current_dirname = os.path.basename(current_working_dir)
-    if current_dirname == 'streamlit':
-        if only_challenges:
-            date_files = glob.glob(f".\..\loaded_data\challenges_dates_dict_*.npy")
+    if local:
+        current_working_dir = os.getcwd()
+        current_dirname = os.path.basename(current_working_dir)
+        if current_dirname == 'streamlit':
+            if only_challenges:
+                date_files = glob.glob(f".\..\loaded_data\challenges_dates_dict_*.npy")
+            else:
+                date_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
+        elif current_dirname == 'thesis':
+            if only_challenges:
+                date_files = glob.glob(f".\loaded_data\challenges_dates_dict_*.npy")
+            else:
+                date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
         else:
-            date_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
-    elif current_dirname == 'thesis':
-        if only_challenges:
-            date_files = glob.glob(f".\loaded_data\challenges_dates_dict_*.npy")
-        else:
-            date_files = glob.glob(f".\loaded_data\dates_dict_*.npy")
+            print("Could not find loaded data in current working directory!")
+            return None
+        print(f"Date files {date_files}")
+        dates_dict = dict()
+        for date_file in date_files:
+            date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
+
+            start_date_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            date_key_dt = datetime.strptime(date_key, "%Y-%m-%d")
+            if start_date_dt <= date_key_dt and end_date_dt >= date_key_dt:
+                print(f"Loading {date_key}")
+                dates_dict[date_key] = np.load(date_file,allow_pickle=True).item()
+
+        print(f"Loading done!")
+
+        return dates_dict
     else:
-        print("Could not find loaded data in current working directory!")
-        return None
-    print(f"Date files {date_files}")
-    dates_dict = dict()
-    for date_file in date_files:
-        date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
-
-        start_date_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
-        date_key_dt = datetime.strptime(date_key, "%Y-%m-%d")
-        if start_date_dt <= date_key_dt and end_date_dt >= date_key_dt:
-            print(f"Loading {date_key}")
-            dates_dict[date_key] = np.load(date_file,allow_pickle=True).item()
-
-    print(f"Loading done!")
-    
-    return dates_dict
+        return dict()
 
 def ignore_standing_pos(positions, date_key):
     # ignore robot standing still
