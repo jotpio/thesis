@@ -488,3 +488,23 @@ def check_line(split_line, id_line, file_path):
         print(f"Irregular line ({id_line}) in {file_path}!")
         return False #ignore line
     return True
+
+def get_date_boundaries(all_date_files):
+    min_date = None
+    max_date = None
+    if len(all_date_files) == 0:
+        print("No files received")
+        return None, None
+        
+    # find min and max date file
+    for date_file in all_date_files:
+        date = datetime.strptime(date_file.split('\\')[-1].split('_')[-1].split('.')[0], "%Y-%m-%d")
+        if min_date is None or date < min_date:
+            min_date = date
+        if max_date is None or date > max_date:
+            max_date = date
+        
+    if min_date is None or max_date is None:
+        print("Did not find min and max date in date files")
+        return None, None
+    return min_date.strftime('%Y-%m-%d'), max_date.strftime('%Y-%m-%d')

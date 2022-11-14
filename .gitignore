@@ -3,3 +3,4 @@ __pycache__/
 .ipynb*/
 loaded_data/
 */secrets.toml
+*.toml

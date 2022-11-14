@@ -31,12 +31,19 @@ def main(args):
     
     if local:
         print("Using local data...")
+        all_files = glob.glob(f".\..\loaded_data\dates_dict_*.npy")
     else:
         print("Using remote data...")
+        all_files = get_all_remote_files()
     
     #initialize
-    start_date = "2021-11-19"
-    end_date = "2022-10-25"
+    data_model.limit_start_date, data_model.limit_end_date = util.get_date_boundaries(all_files)
+    start_date = data_model.limit_start_date
+    end_date = data_model.limit_end_date
+    
+    if data_model.limit_start_date is None or data_model.limit_end_date is None:
+        st.write("No files found in remote drive")
+        return
     
     st.title('Human leadership data Humboldt Forum')
     st.subheader('Set date range to load...')
@@ -48,9 +55,9 @@ def main(args):
         start_date = st.date_input(
             "Start date",
             # datetime.date(2022, 2, 1))
-            datetime.datetime.strptime(str(start_date), "%Y-%m-%d").date(),
-            min_value=datetime.datetime.strptime(str(start_date), "%Y-%m-%d").date(),
-            max_value=datetime.datetime.strptime(str(end_date), "%Y-%m-%d").date()
+            datetime.datetime.strptime(str(data_model.limit_start_date), "%Y-%m-%d").date(),
+            min_value=datetime.datetime.strptime(str(data_model.limit_start_date), "%Y-%m-%d").date(),
+            max_value=datetime.datetime.strptime(str(data_model.limit_end_date), "%Y-%m-%d").date()
             ).strftime("%Y-%m-%d")
         data_model.start_date = start_date
         st.caption(f"Current start date is: {start_date}")
@@ -58,9 +65,9 @@ def main(args):
     with col2:
         end_date = st.date_input(
             "End date",
-            datetime.datetime.strptime(str(end_date), "%Y-%m-%d").date(),
-            min_value=datetime.datetime.strptime(str(start_date), "%Y-%m-%d").date(),
-            max_value=datetime.datetime.strptime(str(end_date), "%Y-%m-%d").date()
+            datetime.datetime.strptime(str(data_model.limit_end_date), "%Y-%m-%d").date(),
+            min_value=datetime.datetime.strptime(str(data_model.limit_start_date), "%Y-%m-%d").date(),
+            max_value=datetime.datetime.strptime(str(data_model.limit_end_date), "%Y-%m-%d").date()
             ).strftime("%Y-%m-%d")
         data_model.end_date = end_date
         st.caption(f"Current end date is: {end_date}")
@@ -79,7 +86,7 @@ def main(args):
             if local:
                 dates_dict = load_local_data(start_date, end_date, load_only_challenge_runs, local=local)
             else:
-                dates_dict = load_remote_data(start_date, end_date, load_only_challenge_runs, local=local)
+                dates_dict = load_remote_data(start_date, end_date, load_only_challenge_runs, all_files, local=local)
             data_model.dates_dict = dates_dict
             data_model.min_start_date = start_date
             data_model.max_end_date = end_date 
@@ -113,16 +120,21 @@ def load_local_data(start_date, end_date, only_challenges, local=True):
     return dates_dict
 
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False, hash_funcs={"_thread.RLock": lambda _: None, "builtins.weakref": lambda _: None})
-def load_remote_data(start_date, end_date, only_challenges, local=False):
+def load_remote_data(start_date, end_date, only_challenges, all_files, local=False):
     print("Loading data from deta drive...")
-    
     deta = Deta(st.secrets["deta_key"])        # Initialize with a Project Key
     drive = deta.Drive("human_leadership_data_HF")
-
-    all_files = drive.list(limit=1000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
     dates_dict = util.load_dates_from_npz(start_date, end_date, only_challenges, local=local, remote_files=all_files, drive=drive)
     st.write("Loaded data for the first time (", start_date, ",", end_date, ")...")
     return dates_dict
+                                                    
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False, hash_funcs={"_thread.RLock": lambda _: None, "builtins.weakref": lambda _: None})
+def get_all_remote_files():
+    print("Getting all remote files...")
+    deta = Deta(st.secrets["deta_key"])        # Initialize with a Project Key
+    drive = deta.Drive("human_leadership_data_HF")
+    all_files = drive.list(limit=1000, prefix="challenges")["names"] # get all available remote files
+    return all_files
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
