@@ -77,9 +77,9 @@ def main(args):
         # load data
         with st.spinner('Loading data... (This may take several minutes, depending on amount of data loaded)'):
             if local:
-                dates_dict = load_local_data(start_date, end_date, load_only_challenge_runs, local=True)
+                dates_dict = load_local_data(start_date, end_date, load_only_challenge_runs, local=local)
             else:
-                dates_dict = load_remote_data(start_date, end_date, load_only_challenge_runs)
+                dates_dict = load_remote_data(start_date, end_date, load_only_challenge_runs, local=local)
             data_model.dates_dict = dates_dict
             data_model.min_start_date = start_date
             data_model.max_end_date = end_date 
@@ -104,7 +104,7 @@ def main(args):
         
         
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
-def load_local_data(start_date, end_date, only_challenges, local=False):
+def load_local_data(start_date, end_date, only_challenges, local=True):
     
     # load preloaded files
     dates_dict = util.load_dates_from_npz(start_date, end_date, only_challenges, local=local)
@@ -113,7 +113,7 @@ def load_local_data(start_date, end_date, only_challenges, local=False):
     return dates_dict
 
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False, hash_funcs={"_thread.RLock": lambda _: None, "builtins.weakref": lambda _: None})
-def load_remote_data(start_date, end_date, only_challenges):
+def load_remote_data(start_date, end_date, only_challenges, local=False):
     print("Loading data from deta drive...")
     
     deta = Deta(st.secrets["deta_key"])        # Initialize with a Project Key
