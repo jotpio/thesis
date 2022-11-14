@@ -214,12 +214,12 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
                 date_file = drive.get(remote_file)
                 
                 
-                with open(local_temp_file, "wb+") as f:
+                with open("local_temp_file.npy", "wb+") as f:
                     for chunk in date_file.iter_chunks(4096):
                         f.write(chunk)
                     date_file.close()
                     dates_dict[date_key] = np.load(f,allow_pickle=True).item()
-                os.remove(local_temp_file)
+                os.remove("local_temp_file.npy")
         return dates_dict
         print(f"Loading done!")
 
