@@ -112,7 +112,7 @@ def load_local_data(start_date, end_date, only_challenges, local=False):
     st.write("Loaded data for the first time (", start_date, ",", end_date, ")...")
     return dates_dict
 
-@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False, hash_funcs={"_thread.RLock": lambda _: None})
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False, hash_funcs={"_thread.RLock": lambda _: None, "builtins.weakref": lambda _: None})
 def load_remote_data(start_date, end_date, only_challenges):
     print("Loading data from deta drive...")
     
