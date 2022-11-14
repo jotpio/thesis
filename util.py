@@ -218,7 +218,10 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
                         f.write(chunk)
                     date_file.close()
                 dates_dict[date_key] = np.load("local_temp_file.npy",allow_pickle=True).item()
-                os.remove("local_temp_file.npy")
+                try:
+                    os.remove("local_temp_file.npy")
+                except:
+                    print("Local temp file not existing!") 
         return dates_dict
         print(f"Loading done!")
 
