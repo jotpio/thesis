@@ -119,7 +119,7 @@ def load_remote_data(start_date, end_date, only_challenges):
     deta = Deta(st.secrets["deta_key"])        # Initialize with a Project Key
     drive = deta.Drive("human_leadership_data_HF")
 
-    all_files = drive.list(limit=10000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
+    all_files = drive.list(limit=1000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
     print(all_files[0:100])
     return all_files
     
