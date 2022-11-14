@@ -164,7 +164,7 @@ def save_dates_to_npz(dates_dict, only_challenges=True):
         print(f"Saving {key} to {file_name}")
         np.save(file_name, date, allow_pickle=True)
         
-def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True):
+def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None):
     # load dates from npy files
     print("Loading data from npz files.....")
     if local:
@@ -199,7 +199,21 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True):
 
         return dates_dict
     else:
-        return dict()
+        if remote_files is None:
+            assert False
+        dates_dict = dict()
+        for remote_file in remote_files:
+            date_key = remote_file.split('_')[-1].split('.')[0]
+
+            start_date_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            date_key_dt = datetime.strptime(date_key, "%Y-%m-%d")
+            if start_date_dt <= date_key_dt and end_date_dt >= date_key_dt:
+                print(f"Loading {date_key}")
+                date_file = drive.get(remote_file)
+                dates_dict[date_key] = np.load(date_file,allow_pickle=True).item()
+        return dates_dict
+        print(f"Loading done!")
 
 def ignore_standing_pos(positions, date_key):
     # ignore robot standing still

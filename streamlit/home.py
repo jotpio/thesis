@@ -120,7 +120,6 @@ def load_remote_data(start_date, end_date, only_challenges):
     drive = deta.Drive("human_leadership_data_HF")
 
     all_files = drive.list(limit=1000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
-    print(all_files[0:100])
     return all_files
     
 if __name__ == "__main__":
