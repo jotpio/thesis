@@ -120,7 +120,9 @@ def load_remote_data(start_date, end_date, only_challenges):
     drive = deta.Drive("human_leadership_data_HF")
 
     all_files = drive.list(limit=1000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
-    return all_files
+    dates_dict = util.load_dates_from_npz(start_date, end_date, only_challenges, local=local, remote_files=all_files)
+    st.write("Loaded data for the first time (", start_date, ",", end_date, ")...")
+    return dates_dict
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
