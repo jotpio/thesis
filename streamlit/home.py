@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, argparse
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 if parent not in sys.path:
@@ -15,6 +15,8 @@ import seaborn as sns
 sns.set_theme()
 sns.set()
 
+from deta import Deta  # Import Deta
+
 import datetime
 
 import data_model
@@ -24,7 +26,14 @@ import plot
 import plot_usage_statistics 
 
 
-def main():
+def main(args):
+    local = args.local
+    
+    if local:
+        print("Using local data...")
+    else:
+        print("Using remote data...")
+    
     #initialize
     start_date = "2021-11-19"
     end_date = "2022-10-25"
@@ -67,7 +76,10 @@ def main():
     if load:
         # load data
         with st.spinner('Loading data... (This may take several minutes, depending on amount of data loaded)'):
-            dates_dict = load_data(start_date, end_date, load_only_challenge_runs)
+            if local:
+                dates_dict = load_local_data(start_date, end_date, load_only_challenge_runs)
+            else:
+                dates_dict = load_remote_data(start_date, end_date, load_only_challenge_runs)
             data_model.dates_dict = dates_dict
             data_model.min_start_date = start_date
             data_model.max_end_date = end_date 
@@ -92,7 +104,7 @@ def main():
         
         
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
-def load_data(start_date, end_date, only_challenges):
+def load_local_data(start_date, end_date, only_challenges):
     
     # load preloaded files
     dates_dict = util.load_dates_from_npz(start_date, end_date, only_challenges)
@@ -100,8 +112,19 @@ def load_data(start_date, end_date, only_challenges):
     st.write("Loaded data for the first time (", start_date, ",", end_date, ")...")
     return dates_dict
 
+@st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
+def load_remote_data(start_date, end_date, only_challenges):
+    print("Loading data from deta drive...")
     
+    deta = Deta(st.secrets["deta_key"])        # Initialize with a Project Key
+    drive = deta.Drive("human_leadership_data_HF")
+
+    all_files = drive.list(limit=10000, prefix="challenges")["names"] #https://docs.deta.sh/docs/drive/sdk#list
+    print(all_files[0:100])
     
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--local", help="load local data", action="store_true")
+    args = parser.parse_args()
+    main(args)
     
