@@ -75,14 +75,22 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
 
 def plot_run(date_dict, id_run, date_key, challenges=True, only_successful=True, show=True):
     fig = plt.figure(num=date_key, figsize=(16,9))
-    run = date_dict["runs"][id_run]
+    # get run
+    date_runs = date_dict['runs']
+    date_successful = date_dict['successful']
+    date_challenges = date_dict['challenges']
+    if only_successful:
+        date_runs, _ = get_successful_runs(date_runs, date_successful)
+    elif challenges:
+        date_runs, _ = get_challenge_runs(date_runs, date_challenges)
+    run = date_runs[id_run]
+        
     dt_timestamps = [datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S,%f') for timestamp in date_dict["timestamps"]]
     velocity_vectors_run, speed_run, acceleration_run = calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps)
     
-    print(id_run)
-    print(run)
-    print(date_key)
-    print(np.array(velocity_vectors_run).shape)
+    #print(id_run)
+    #print(run)
+    #print(date_key)
 
     # positions
     ax1 = plt.subplot(321)
@@ -123,11 +131,11 @@ def plot_run(date_dict, id_run, date_key, challenges=True, only_successful=True,
 
     #
     if only_successful:
-        title_run_modifier = "only successful runs"
+        title_run_modifier = "successful run"
     elif challenges:
-        title_run_modifier = "all challenge runs"
+        title_run_modifier = "challenge run"
     else:
-        title_run_modifier = "all runs"
+        title_run_modifier = "run"
     fig.suptitle(f"{dt_timestamps[run[0]]} - {dt_timestamps[run[1]]}: {title_run_modifier}")#, fontsize=10)
     plt.tight_layout()
     if show:

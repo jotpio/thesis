@@ -118,6 +118,7 @@ def get_challenge_runs(runs, challenges):
         ids_challenge_runs = np.argwhere(challenges).ravel()
         return challenge_runs, ids_challenge_runs
     else:
+        print(f"No runs ({len(runs)}) or no challenge runs  ({len(successful)}) or different size")
         return [], []
     
 def get_successful_runs(runs, successful):
@@ -308,6 +309,11 @@ def get_number_of_runs(dates_dict, start_date, end_date, successful=False, chall
     
     dates_keys = dates_dict.keys()
     for date_key in dates_keys:
+        #check if date in range
+        if not check_if_date_in_range(date_key, start_date, end_date):
+            continue
+        
+        # get number of runs
         date_dict = dates_dict[date_key]
         
         if successful:
@@ -391,7 +397,6 @@ def tolerant_mean(arrs):
 
 def equalize_arrays(arrs, fillvalue):
     max_len = max([len(i) for i in arrs])
-    print(max_len)
     
     for arr in arrs:
         arr.extend([fillvalue for i in range(max_len-len(arr))])
