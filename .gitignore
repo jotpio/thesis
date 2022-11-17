@@ -4,3 +4,4 @@ __pycache__/
 loaded_data/
 */secrets.toml
 *.toml
+*.zip

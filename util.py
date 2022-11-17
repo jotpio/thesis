@@ -118,7 +118,7 @@ def get_challenge_runs(runs, challenges):
         ids_challenge_runs = np.argwhere(challenges).ravel()
         return challenge_runs, ids_challenge_runs
     else:
-        print(f"No runs ({len(runs)}) or no challenge runs  ({len(successful)}) or different size")
+        print(f"No runs ({len(runs)}) or no challenge runs  ({len(challenges)}) or different size")
         return [], []
     
 def get_successful_runs(runs, successful):

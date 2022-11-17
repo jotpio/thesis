@@ -78,15 +78,16 @@ class RunDataPage(Page):
         st.markdown("""---""")
 
         # show data
-        df_run = create_run_dataframe(self.data_model.dates_dict[date_selection], id_run=run_selection, only_successful=self.data_model.only_successful, challenges=self.data_model.challenges) # create dataframe
-        run_type = get_run_type(self.data_model.dates_dict[date_selection], id_run=run_selection)
-        run_time = np.abs((df_run["timestamps"].iloc[0] - df_run["timestamps"].iloc[-1]).total_seconds())
+        with st.spinner("Creating dataframe for this run"):
+            df_run = create_run_dataframe(self.data_model.dates_dict[date_selection], id_run=run_selection, only_successful=self.data_model.only_successful, challenges=self.data_model.challenges) # create dataframe
+            run_type = get_run_type(self.data_model.dates_dict[date_selection], id_run=run_selection)
+            run_time = np.abs((df_run["timestamps"].iloc[0] - df_run["timestamps"].iloc[-1]).total_seconds())
 
-        col1,col2 = st.columns([2,1])
-        col1.metric("type", run_type)
-        col2.metric("time in seconds", run_time)
-        st.markdown("""---""")
-        st.dataframe(data=df_run, use_container_width=False)
+            col1,col2 = st.columns([2,1])
+            col1.metric("type", run_type)
+            col2.metric("time in seconds", run_time)
+            st.markdown("""---""")
+            st.dataframe(data=df_run, use_container_width=False)
 
     
     

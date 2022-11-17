@@ -69,7 +69,8 @@ class MainPage(Page):
                 # datetime.date(2022, 2, 1))
                 datetime.datetime.strptime(str(current_start_date), "%Y-%m-%d").date(),
                 min_value=datetime.datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
-                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date()
+                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
+                key="home_select_start_date"
                 ).strftime("%Y-%m-%d")
             st.caption(f"Current start date is: {current_start_date}")
 
@@ -79,7 +80,8 @@ class MainPage(Page):
                 "End date",
                 datetime.datetime.strptime(str(current_end_date), "%Y-%m-%d").date(),
                 min_value=datetime.datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
-                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date()
+                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
+                key="home_select_end_date"
                 ).strftime("%Y-%m-%d")
             st.caption(f"Current end date is: {current_end_date}")
 
