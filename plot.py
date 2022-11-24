@@ -893,3 +893,4 @@ def plot_runlength_dist_goal_target_corr(dates_dict, start_date=None, end_date=N
         plt.show()
         
     return fig1, fig2
+

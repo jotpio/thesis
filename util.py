@@ -382,8 +382,8 @@ def get_number_of_frames(dates_dict, start_date, end_date):
 
 def flatten_2d_list(input_list):
     flat_list = []
-    for i in input_list:
-        for e in i:
+    for i in list(input_list):
+        for e in list(i):
             flat_list.append(e)
     return flat_list
 
@@ -516,3 +516,6 @@ def get_date_boundaries(all_date_files):
         print("Did not find min and max date in date files")
         return None, None
     return min_date.strftime('%Y-%m-%d'), max_date.strftime('%Y-%m-%d')
+
+def rolling_mean_data(array, window_size):
+    return np.convolve(array, np.ones(window_size)/window_size, mode='same')
