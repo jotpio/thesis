@@ -19,7 +19,8 @@ sns.set()
 
 from deta import Deta  # Import Deta
 
-import datetime
+from datetime import datetime
+from dateutil.relativedelta import *
 
 import data_model
 import load_data
@@ -60,27 +61,30 @@ class MainPage(Page):
         if self.data_model.dates_dict is not None:
             st.info(f"Currently loaded {self.data_model.min_start_date} to {self.data_model.max_end_date}")
         
+        if not self.local:
+            st.warning(f"As this dashboard runs in a ressource-limited cloud environment, please do not load more than one month of data to prevent crashes.")
+        
         # select date window
+        current_start_date = self.data_model.limit_start_date if self.data_model.min_start_date is None else self.data_model.min_start_date
+        current_end_date = self.data_model.limit_end_date if self.data_model.max_end_date is None else self.data_model.max_end_date
         col1, col2 = st.columns(2)
         with col1:
-            current_start_date = self.data_model.limit_start_date if self.data_model.min_start_date is None else self.data_model.min_start_date
             selected_start_date = st.date_input(
                 "Start date",
                 # datetime.date(2022, 2, 1))
-                datetime.datetime.strptime(str(current_start_date), "%Y-%m-%d").date(),
-                min_value=datetime.datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
-                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
+                datetime.strptime(str(current_start_date), "%Y-%m-%d").date(),
+                min_value=datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
+                max_value=datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
                 key="home_select_start_date"
                 ).strftime("%Y-%m-%d")
             st.caption(f"Current start date is: {current_start_date}")
 
         with col2:
-            current_end_date = self.data_model.limit_end_date if self.data_model.max_end_date is None else self.data_model.max_end_date
             selected_end_date = st.date_input(
                 "End date",
-                datetime.datetime.strptime(str(current_end_date), "%Y-%m-%d").date(),
-                min_value=datetime.datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
-                max_value=datetime.datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
+                datetime.strptime(str(current_end_date), "%Y-%m-%d").date(),
+                min_value=datetime.strptime(str(self.data_model.limit_start_date), "%Y-%m-%d").date(),
+                max_value=datetime.strptime(str(self.data_model.limit_end_date), "%Y-%m-%d").date(),
                 key="home_select_end_date"
                 ).strftime("%Y-%m-%d")
             st.caption(f"Current end date is: {current_end_date}")
