@@ -1,6 +1,6 @@
 import os, re
 import numpy as np
-from datetime import datetime 
+from datetime import datetime, date, timedelta
 import glob
 from deta import Deta
 
@@ -166,7 +166,7 @@ def save_dates_to_npz(dates_dict, only_challenges=True):
         print(f"Saving {key} to {file_name}")
         np.save(file_name, date, allow_pickle=True)
         
-def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None, drive=None):
+def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None, drive=None, verbose=False):
     # load dates from npy files
     print("Loading data from npz files.....")
     if local:
@@ -185,7 +185,8 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
         else:
             print("Could not find loaded data in current working directory!")
             return None
-        print(f"Date files {date_files}")
+        if verbose:
+            g(f"Date files {date_files}")
         dates_dict = dict()
         for date_file in date_files:
             date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
@@ -519,3 +520,7 @@ def get_date_boundaries(all_date_files):
 
 def rolling_mean_data(array, window_size):
     return np.convolve(array, np.ones(window_size)/window_size, mode='same')
+
+def daterange(start_date, end_date):
+    for n in range(int((end_date - start_date).days)):
+        yield start_date + timedelta(n)

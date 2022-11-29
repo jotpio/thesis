@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from util import get_challenge_runs, get_successful_runs, get_hours_minutes_seconds_from_decimal_hours
+from util import get_challenge_runs, get_successful_runs, get_hours_minutes_seconds_from_decimal_hours, daterange
 from datetime import datetime
 import numpy as np
 
@@ -51,16 +51,41 @@ def plot_time_of_day_histogram(dates_dict, challenges=True, only_successful=True
     return fig
 
 
-def plot_daily_number_runs(dates_dict, show=True):
+def plot_daily_number_runs(dates_dict, start_date=None, end_date=None, show=True):
     # bar plot number of (unique) visitors for each day
     dates_keys = dates_dict.keys()
+    if start_date is not None:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    else:
+        start_date = datetime.strptime(list(dates_dict.keys())[0], '%Y-%m-%d')
+    if end_date is not None:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    else:
+        end_date = datetime.strptime(list(dates_dict.keys())[-1], '%Y-%m-%d')
 
     num_runs_per_day = []
     num_challenge_runs_per_day = []
     num_successful_runs_per_day = []
     num_non_ch_runs_per_day = []
-    for date_key in dates_keys:
-        date_dict = dates_dict[date_key]
+        
+    for single_date in daterange(start_date, end_date):
+        current_date_str = single_date.strftime("%Y-%m-%d")
+        date = datetime.strptime(current_date_str, '%Y-%m-%d')
+        
+        if start_date is not None and start_date > date:
+            continue
+        if end_date is not None and end_date < date:
+            continue
+        
+        
+        date_dict = dates_dict.get(current_date_str,{})
+        if not date_dict:
+            num_runs_per_day.append(0)
+            num_challenge_runs_per_day.append(0)
+            num_successful_runs_per_day.append(0)
+            num_non_ch_runs_per_day.append(0)
+            continue
+            
         date_runs = date_dict["runs"]
 
         num_runs_per_day.append(len(date_dict['runs']))
@@ -78,10 +103,10 @@ def plot_daily_number_runs(dates_dict, show=True):
 
     plt.title(f"run numbers and estimated visitors for each day\n{list(dates_keys)[0]} - {list(dates_keys)[-1]}")
     ax = plt.gca()
-
-    tot = ax.bar(dates_keys, num_runs_per_day, label='total number of runs')
-    cha = ax.bar(dates_keys, num_challenge_runs_per_day, label='total number of challenge runs')
-    suc = ax.bar(dates_keys, num_successful_runs_per_day, label='total number of successful runs')
+    date_range = [day.strftime("%Y-%m-%d") for day in list(daterange(start_date, end_date))]
+    tot = ax.bar(list(date_range), num_runs_per_day, label='total number of runs')
+    cha = ax.bar(list(date_range), num_challenge_runs_per_day, label='total number of challenge runs')
+    suc = ax.bar(list(date_range), num_successful_runs_per_day, label='total number of successful runs')
 
     ax2 = ax.twinx()
     ax2.get_yaxis().set_visible(False)
@@ -89,7 +114,8 @@ def plot_daily_number_runs(dates_dict, show=True):
     ax2.grid(False)
     # ax.get_yaxis().set_visible(False)
 
-    est, = ax2.plot(num_non_ch_runs_per_day, 'ko-', label='estimated number of visitors')
+    est, = ax2.plot(num_non_ch_runs_per_day, 'ko-', label='estimated daily number of visitors')
+    mean_est_visitors = plt.axhline(y = np.mean(num_non_ch_runs_per_day), color = 'r', linestyle = '-', label='mean daily estimated number of visitors')
 
     # print(ax2.get_yticklabels())
     # ax2.get_yticklabels()[2].set_visible(False)
@@ -101,7 +127,7 @@ def plot_daily_number_runs(dates_dict, show=True):
     # ax3 = fig.add_subplot(122)
     # est, = ax2.plot(num_non_ch_runs_per_day, 'ko-', label='estimated number of visitors')
 
-    plt.legend(handles=[tot,cha,suc,est])
+    plt.legend(handles=[tot,cha,suc,est, mean_est_visitors])
     fig.autofmt_xdate()
     plt.tight_layout()
     if show:
@@ -310,7 +336,7 @@ def plot_weekday_business(dates_dict, show=True):
         ax2.yaxis.set_major_formatter(mtick.PercentFormatter())
 
 
-        ax1.set_xlabel('X data')
+        ax1.set_xlabel('weekdays')
         ax1.set_ylabel('number of estimated visitors', color='g')
         ax2.set_ylabel('percentual use time of running time (in %)', color='b')
 

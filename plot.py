@@ -11,9 +11,9 @@ def plot_all_positions(dates_dict, start_date=None, end_date=None, ax=None, chal
     dates_keys = dates_dict.keys()
     
     if start_date is not None:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
     if end_date is not None:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
             
     for date_key in dates_keys:
         date_dict = dates_dict[date_key]

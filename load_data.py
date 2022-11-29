@@ -5,13 +5,14 @@ import json
 import numpy as np
 from tqdm.notebook import tqdm_notebook
 
-def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False):
+def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False, verbose=False):
     '''
     robot_dir:     directory of robot log files
     start_date:    starting date from which to get data from
     end_date:      end date from which to get data from
     '''
-    print(robot_dir)
+    if verbose:
+        print(robot_dir)
     print(f"Loading robot data from {robot_dir}")
     # get robot files
     file_paths = glob.glob(robot_dir+"/robot.*")

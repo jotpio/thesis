@@ -29,6 +29,7 @@ class AboutPage(Page):
                     You can find out more about the data structure on the Data Structure page in the left sidebar.
                     """)
             st.write("The exhibit was developed by David James of IGB and Jonas Piotrowski of ScioI under the supervision of Dr. David Bierbach ")
+            st.write("https://www.scienceofintelligence.de/")
         with col2:
             # show rack image
             rack_image_stream = self.deta_image_drive.get("rack1.jpg")

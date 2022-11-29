@@ -1,4 +1,4 @@
-import sys, os, argparse
+import sys, os, argparse, glob
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 if parent not in sys.path:
@@ -106,6 +106,7 @@ class MainPage(Page):
 
             # load data
             with st.spinner('Loading data... (This may take several minutes, depending on amount of data loaded)'):
+                dates_dict = None #clear previous data to clear memory
                 if self.local:
                     dates_dict = load_local_data(selected_start_date, selected_end_date, load_only_challenge_runs, local=self.local)
                 else:
