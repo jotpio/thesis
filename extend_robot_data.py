@@ -4,7 +4,7 @@ from util import distance
 from util import get_successful_runs, get_challenge_runs
 
 
-def extend_robot_data(dates_dict):
+def extend_robot_data(dates_dict, verbose=False):
     # parameters
     cutoff_run = 2 # seconds after new run is started
     min_data_run = 15 # ~5 seconds of data at 3fps
@@ -66,15 +66,13 @@ def extend_robot_data(dates_dict):
             if len(date_run_lengths) > 0:
                 mean_length = np.mean(date_run_lengths)
                 median_length = np.median(date_run_lengths)
-                print(f"{date_key}: Mean run length: {mean_length:.2f}; median run length: {median_length:.2f}")
+                if verbose: print(f"{date_key}: Mean run length: {mean_length:.2f}; median run length: {median_length:.2f}")
     # add successful runs
     dates_dict = get_successful_runs(dates_dict)
-
-    print("Done")
     
     return dates_dict
 
-def get_successful_runs(dates_dict):
+def get_successful_runs(dates_dict, verbose=False):
     ### get successful runs
     for date_key in dates_dict.keys():
         date_dict = dates_dict[date_key]
@@ -101,7 +99,7 @@ def get_successful_runs(dates_dict):
                     if len(date_dict_fish) > run[1]-i:
                         ts_fish = date_dict_fish[run[1]-i]
                     else:
-                        print("number of fish data entries is lower that number of timestamps")
+                        if verbose: print("Number of fish data entries is lower that number of timestamps")
                         break
                     for fish in ts_fish:
                         if fish["id"] == 1:
@@ -126,8 +124,8 @@ def get_successful_runs(dates_dict):
         date_dict["successful"] = successful_ch
         if len(successful_ch)>0 and len(ch_runs)>0:
             successful_challenge_runs = np.array(date_dict_runs)[successful_ch]
-            print(f"{date_key}: Number of challenge runs:{len(ch_runs)}, successful:{len(successful_challenge_runs)} | {len(successful_challenge_runs) /len(ch_runs) * 100:.2f}% successful runs")
+            if verbose: print(f"{date_key}: Number of challenge runs:{len(ch_runs)}, successful:{len(successful_challenge_runs)} | {len(successful_challenge_runs) /len(ch_runs) * 100:.2f}% successful runs")
         else:
-            print(f"number of challenge runs: {len(ch_runs)}; number of successful runs: {len(successful_ch)}")
+            if verbose: print(f"number of challenge runs: {len(ch_runs)}; number of successful runs: {len(successful_ch)}")
             
     return dates_dict

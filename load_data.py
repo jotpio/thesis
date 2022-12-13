@@ -31,7 +31,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False, verbo
         # check if file name irregular 
         split_file_path = file_name.split(".")
         if len(split_file_path) <= 1:
-            print(f"Skipped {file_path}")
+            if verbose: print(f"Skipped {file_path}")
             continue
         
         # check if file date in range
@@ -45,7 +45,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False, verbo
         
         # init arrays for new date_dict 
         if len(date_dict.keys()) == 0:
-            print(f"\tInitializing new date_dict for {file_date}...")
+            if verbose: print(f"\tInitializing new date_dict for {file_date}...")
             date_dict["timestamps"] = []
             date_dict["positions"] = []
             date_dict["adjusted_positions"] = []
@@ -62,7 +62,7 @@ def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False, verbo
         
         # load line by line and add to corresponding day
         with open(file_path, "r") as file:
-            print(f"Loading {file_path}...")
+            if verbose: print(f"Loading {file_path}...")
             for id_line, line in enumerate(file):
                 
                 # clean and check line
@@ -107,9 +107,9 @@ def load_robot_data(robot_dir, start_date=None, end_date=None, tqdm=False, verbo
             toc=time.time()
             print(f"\t{toc-tic:.4f} seconds elapsed")
 
-    print(f"{len(dates_dict.keys())} day(s) loaded!")
+    if verbose: print(f"{len(dates_dict.keys())} day(s) loaded!")
     all_toc=time.time()
-    print(f"Loading robot files took {all_toc-all_tic} seconds")
+    if verbose: print(f"Loading robot files took {all_toc-all_tic} seconds")
     
     return dates_dict
 

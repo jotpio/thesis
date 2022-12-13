@@ -88,6 +88,27 @@ def get_fish_pos_per_run(all_fish_pos, runs):
 
     return fish_pos_all_runs
 
+def get_fish_dir_per_run(all_fish_dir, runs):
+    fish_dir_all_runs = []
+    if len(all_fish_dir) == 0:
+        return []
+    for id_run, run in enumerate(runs):
+        fish_dir_run = []
+        run_fish = all_fish_dir[run[0]:run[1]+1]
+        
+        for all_fish_in_ts in run_fish:
+            fish_dir_ts = []
+            for fish in all_fish_in_ts:
+                if fish['id'] != 0:
+                    fish_dir_ts.append(fish["orientation"])
+                    
+            # print(fish_dir_ts[0])
+            fish_dir_run.append(fish_dir_ts)
+
+        fish_dir_all_runs.append(fish_dir_run)
+
+    return fish_dir_all_runs
+
 def get_fish_following_per_run(all_fish, runs):
     fish_following_all_runs = []
     if len(all_fish) == 0:
@@ -109,7 +130,7 @@ def get_fish_following_per_run(all_fish, runs):
 
     return fish_following_all_runs
 
-def get_challenge_runs(runs, challenges):
+def get_challenge_runs(runs, challenges, verbose=False):
     '''
     both need to be same length
     '''
@@ -118,10 +139,10 @@ def get_challenge_runs(runs, challenges):
         ids_challenge_runs = np.argwhere(challenges).ravel()
         return challenge_runs, ids_challenge_runs
     else:
-        print(f"No runs ({len(runs)}) or no challenge runs  ({len(challenges)}) or different size")
+        if verbose: print(f"No runs ({len(runs)}) or no challenge runs  ({len(challenges)}) or different size")
         return [], []
     
-def get_successful_runs(runs, successful):
+def get_successful_runs(runs, successful, verbose=False):
     '''
     both need to be same length
     '''
@@ -130,7 +151,18 @@ def get_successful_runs(runs, successful):
         ids_successful_runs = np.argwhere(successful).ravel()
         return successful_runs, ids_successful_runs
     else:
-        print(f"No runs ({len(runs)}) or no successful runs  ({len(successful)}) or different size")
+        if verbose: print(f"No runs ({len(runs)}) or no successful runs  ({len(successful)}) or different size")
+        return [], []
+
+def get_fast_runs(runs, ids_runs, run_times, percentile=25, verbose=False):
+    assert len(runs) == len(run_times)
+    if len(runs)>0 and len(run_times)>0:
+        fast_run_ids = np.argwhere(run_times<=np.percentile(run_times, percentile)).flatten()
+        fast_runs = runs[fast_run_ids]
+        
+        return fast_runs, ids_runs[fast_run_ids]
+    else:
+        if verbose: print(f"No runs ({len(runs)}) or no run times  ({len(run_times)})")
         return [], []
 
 # https://stackoverflow.com/questions/5254838/calculating-distance-between-a-point-and-a-rectangular-box-nearest-point
@@ -168,7 +200,7 @@ def save_dates_to_npz(dates_dict, only_challenges=True):
         
 def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, remote_files=None, drive=None, verbose=False):
     # load dates from npy files
-    print("Loading data from npz files.....")
+    if verbose: print("Loading data from npz files.....")
     if local:
         current_working_dir = os.getcwd()
         current_dirname = os.path.basename(current_working_dir)
@@ -185,8 +217,7 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
         else:
             print("Could not find loaded data in current working directory!")
             return None
-        if verbose:
-            g(f"Date files {date_files}")
+        if verbose: print(f"Date files {date_files}")
         dates_dict = dict()
         for date_file in date_files:
             date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
@@ -195,11 +226,10 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
             end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
             date_key_dt = datetime.strptime(date_key, "%Y-%m-%d")
             if start_date_dt <= date_key_dt and end_date_dt >= date_key_dt:
-                print(f"Loading {date_key}")
+                if verbose: print(f"Loading {date_key}")
                 dates_dict[date_key] = np.load(date_file,allow_pickle=True).item()
 
-        print(f"Loading done!")
-
+        if verbose: print(f"Loading done!")
         return dates_dict
     else:
         if remote_files is None:
@@ -212,7 +242,7 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
             end_date_dt = datetime.strptime(end_date, "%Y-%m-%d")
             date_key_dt = datetime.strptime(date_key, "%Y-%m-%d")
             if start_date_dt <= date_key_dt and end_date_dt >= date_key_dt:
-                print(f"Loading {date_key}")
+                if verbose: print(f"Loading {date_key}")
                 date_file = drive.get(remote_file)
                 
                 with open("local_temp_file.npy", "wb+") as f:
@@ -224,8 +254,9 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
                     os.remove("local_temp_file.npy")
                 except:
                     print("Local temp file not existing!") 
+        
+        if verbose: print(f"Loading done!")
         return dates_dict
-        print(f"Loading done!")
 
 def ignore_standing_pos(positions, date_key):
     # ignore robot standing still
@@ -281,7 +312,7 @@ def calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps):
     velocity_vectors_run = list(zip(velocity_x_run, velocity_y_run))
     speed_run = np.linalg.norm(velocity_vectors_run, axis=1) # magnitude of velocity vector is speed
 
-    acceleration_run = np.diff(speed_run)
+    acceleration_run = np.diff(speed_run) / timedeltas_run
     
     return velocity_vectors_run, speed_run, acceleration_run
 
@@ -399,9 +430,12 @@ def tolerant_mean(arrs):
 def equalize_arrays(arrs, fillvalue):
     max_len = max([len(i) for i in arrs])
     
+    ret_arrs = []
     for arr in arrs:
-        arr.extend([fillvalue for i in range(max_len-len(arr))])
-    return arrs
+        new_arr = list(arr)
+        new_arr.extend([fillvalue for i in range(max_len-len(arr))])
+        ret_arrs.append(new_arr)
+    return ret_arrs
 
 
 def filter_date_dict_for_challenge_runs(date_dict, challenge_runs, ids_challenge_runs):
