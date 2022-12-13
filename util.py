@@ -312,7 +312,7 @@ def calculate_run_velocity_speed_acceleration(date_dict, run, dt_timestamps):
     velocity_vectors_run = list(zip(velocity_x_run, velocity_y_run))
     speed_run = np.linalg.norm(velocity_vectors_run, axis=1) # magnitude of velocity vector is speed
 
-    acceleration_run = np.diff(speed_run) / timedeltas_run
+    acceleration_run = np.diff(speed_run) / timedeltas_run[:-1]
     
     return velocity_vectors_run, speed_run, acceleration_run
 
