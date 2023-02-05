@@ -6,3 +6,11 @@ loaded_data/
 *.toml
 *.zip
 *.png
+*.csv
+*.npy
+*.json
+leading_model_pawel/*
+leading_model_pawel/
+leading_model_pawel/mycsvfile.csv
+leading_model_pawel/LeadershipModelDevelopment.ipynb
+pawel_code_original/

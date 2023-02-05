@@ -82,7 +82,7 @@ def flatten_plateaus(array, threshold):
             
     return flattened_array
 
-def get_run_turns_towards_target(fish1_pos_this_run, robot_pos_run, robot_dir_run, run_target_dists, plot=False):
+def get_run_turns_towards_target(fish1_pos_this_run, robot_pos_run, robot_dir_run, run_target_dists, prominence_target_dist=20, plot=False):
     turning_points = []
 
     assert len(fish1_pos_this_run) == len(robot_pos_run), print(f"fish:{len(fish1_pos_this_run)}; robot:{len(robot_pos_run)}")
@@ -97,8 +97,8 @@ def get_run_turns_towards_target(fish1_pos_this_run, robot_pos_run, robot_dir_ru
 
     # flatten plateaus before finding peaks in dist to target
     #flat_run_target_dists = np.array(flatten_plateaus(run_target_dists, window_size=5, threshold=50))
-    flat_run_target_dists = np.array(flatten_plateaus(run_target_dists, threshold=30))
-    target_dist_peaks, peaks_properties = signal.find_peaks(np.asarray(flat_run_target_dists), distance=3, prominence=10)
+    flat_run_target_dists = np.array(flatten_plateaus(run_target_dists, threshold=10))
+    target_dist_peaks, peaks_properties = signal.find_peaks(np.asarray(flat_run_target_dists), distance=3, prominence=prominence_target_dist)
 
     # for each peak in target distance, find peak in metric_dir_robot_dir_tow_target shortly before that
     for id_peak, dist_peak in enumerate(target_dist_peaks):

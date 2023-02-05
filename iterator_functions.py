@@ -5,9 +5,17 @@ from extend_robot_data import extend_robot_data
 import numpy as np
 
 
-def iteratively_evaluate_dates_files(start_date, end_date, eval_date_function, load_only_challenge_data, verbose=False):
+def iteratively_evaluate_dates_files(start_date, end_date, eval_date_function, load_only_challenge_data, challenges=True, only_successful=True, fast_runs_percentiles=None, verbose=False):
+    
     all_returns = []
-    #load days one by one
+    
+    # prepare output structure 
+    if type(fast_runs_percentiles) is int:
+        fast_runs_percentiles = [fast_runs_percentiles]
+    if fast_runs_percentiles is not None:
+        all_returns = [[] for i in range(len(fast_runs_percentiles))]
+        
+    # load days one by one
     dt_start_date = datetime.strptime(start_date, "%Y-%m-%d")
     dt_end_date = datetime.strptime(end_date, "%Y-%m-%d")
     for single_date in daterange(dt_start_date, dt_end_date):
@@ -19,9 +27,43 @@ def iteratively_evaluate_dates_files(start_date, end_date, eval_date_function, l
         dates_dict = extend_robot_data(dates_dict)
         # get current date dict
         date_dict = dates_dict.get(current_date_str,{})
-        # apply evaluation function
-        all_returns.append(eval_date_function(date_dict))
+        #
+        
+        # filter runs
+        if fast_runs_percentiles is not None:
+            for id_fast_runs_percentile, fast_runs_percentile in enumerate(fast_runs_percentiles):
+                # apply evaluation function
+                all_returns[id_fast_runs_percentile].append(eval_date_function(date_dict,challenges, only_successful, fast_runs_percentile))
+        else:
+            # apply evaluation function
+            print("No fast run percentile assigned.")
+            # apply evaluation function
+            all_returns.append(eval_date_function(date_dict,challenges, only_successful, None))
+        
     return all_returns
+
+def iteratively_collect_and_filter_dates_files(start_date, end_date, load_only_challenge_data, percentile_value=200, challenges=True, only_successful=True, verbose=False):
+    out_dates_dict = dict()
+        
+    # load days one by one
+    dt_start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    dt_end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    for single_date in daterange(dt_start_date, dt_end_date):
+        print(single_date)
+        current_date_str = single_date.strftime("%Y-%m-%d")
+        #load day
+        dates_dict = load_dates_from_npz(current_date_str, current_date_str, only_challenges=load_only_challenge_data, verbose=verbose)
+        # extend day data
+        dates_dict = extend_robot_data(dates_dict)
+        # get current date dict
+        date_dict = dates_dict.get(current_date_str,{})
+        # filter date_dict
+        date_dict = filter_date_dict(date_dict, percentile_value, challenges, only_successful)
+        
+        # add filtered date_dict in new dates_dict
+        if date_dict:
+            out_dates_dict[current_date_str] = date_dict
+    return out_dates_dict
 
 
 def iteratively_evaluate_dates_files_runwise(eval_run_function, start_date, end_date, load_only_challenge_data=True, challenges=True, only_successful=True, fast_runs_percentiles=None, run_arguments=None, plot=False, verbose=False):
@@ -149,3 +191,63 @@ def forward_rolling_window_apply(array, window_size, function):
         window = array[idx:idx+window_size]
         result.append(function(window))
     return result
+
+def filter_date_dict(date_dict, percentile_value=200, challenges=True, only_successful=True):
+    filtered_dict = date_dict.copy()
+    
+    if not filtered_dict:
+        return dict()
+    
+    # filter runs
+    runs = filtered_dict["runs"]
+    run_lengths = filtered_dict["run_lengths"]
+    if only_successful:
+        runs, ids_runs = get_successful_runs(runs,filtered_dict["successful"])
+    elif challenges:
+        runs, ids_runs = get_challenge_runs(runs,filtered_dict["challenges"])
+    else:
+        runs = filtered_dict["runs"]
+        ids_runs = list(range(len(runs)))
+
+    if percentile_value is not None:
+        # filter quick runs
+        run_lengths = np.asarray(run_lengths)[ids_runs]
+        runs, ids_runs = get_fast_runs(runs, ids_runs, run_lengths, percentile=percentile_value)
+                
+    if len(runs) == 0:
+        return dict()
+    
+        
+    # apply filter to all dict arrays
+    filtered_dict['run_lengths'] = np.array(filtered_dict['run_lengths'])[ids_runs]
+    filtered_dict['difficulties'] = np.array(filtered_dict['difficulties'])[ids_runs]
+    filtered_dict['challenges'] = np.array(filtered_dict['challenges'])[ids_runs]
+    filtered_dict['successful'] = np.array(filtered_dict['successful'])[ids_runs]
+    
+    filtered_timestamps = []
+    filtered_positions = []
+    filtered_orientation = []
+    filtered_rotation = []
+    filtered_fish = []
+    for run in runs:
+        filtered_timestamps.extend(filtered_dict['timestamps'][run[0]:run[1]+1])
+        filtered_positions.extend(filtered_dict['positions'][run[0]:run[1]+1])
+        filtered_orientation.extend(filtered_dict['orientation'][run[0]:run[1]+1])
+        filtered_rotation.extend(filtered_dict['rotation'][run[0]:run[1]+1])
+        filtered_fish.extend(filtered_dict['fish'][run[0]:run[1]+1])
+    filtered_dict['timestamps'] = filtered_timestamps
+    filtered_dict['positions'] = filtered_positions
+    filtered_dict['orientation'] = filtered_orientation
+    filtered_dict['rotation'] = filtered_rotation
+    filtered_dict['fish'] = filtered_fish
+    
+    # zero runs as we filtered out only selected runs
+    zeroed_runs = []
+    current_index = 0
+    for run in runs:
+        zeroed_runs.append([current_index, current_index+(run[1]-run[0])])
+        current_index = current_index+(run[1]-run[0])+1
+    filtered_dict['runs'] = zeroed_runs
+    
+    
+    return filtered_dict

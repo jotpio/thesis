@@ -157,7 +157,8 @@ def get_successful_runs(runs, successful, verbose=False):
 def get_fast_runs(runs, ids_runs, run_times, percentile=25, verbose=False):
     assert len(runs) == len(run_times)
     if len(runs)>0 and len(run_times)>0:
-        fast_run_ids = np.argwhere(run_times<=np.percentile(run_times, percentile)).flatten()
+        #fast_run_ids = np.argwhere(run_times<=np.percentile(run_times, percentile)).flatten()
+        fast_run_ids = np.argwhere(run_times<=percentile).flatten()
         fast_runs = runs[fast_run_ids]
         
         return fast_runs, ids_runs[fast_run_ids]
@@ -217,7 +218,8 @@ def load_dates_from_npz(start_date, end_date, only_challenges=True, local=True, 
         else:
             print("Could not find loaded data in current working directory!")
             return None
-        if verbose: print(f"Date files {date_files}")
+        #if verbose: print(f"Date files {date_files}")
+        
         dates_dict = dict()
         for date_file in date_files:
             date_key = date_file.split('\\')[-1].split('_')[-1].split('.')[0]
