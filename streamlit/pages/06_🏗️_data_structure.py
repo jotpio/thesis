@@ -1,5 +1,6 @@
 import streamlit as st
 from template.page import Page
+from PIL import Image
 
 class DataStructurePage(Page):
     
@@ -9,6 +10,8 @@ class DataStructurePage(Page):
         #
         #PAGE
         #
+        image = Image.open('data_structure.png')
+        st.image(image, caption='Data structure')
         
         
 

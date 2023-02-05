@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+jupyter = "*"
+numpy = "*"
+streamlit = "*"
+toml = "*"
+tqdm = "*"
+seaborn = "*"
+pillow = "*"
+pandas = "*"
+matplotlib = "*"
+fpdf2 = "*"
+deta = "*"
+vistir = "==0.6.1"
+packaging = "==21.3"
+
+[dev-packages]
+pipenv-setup = "*"
+
+[requires]
+python_version = "3.9"
+python_full_version = "3.9.1"

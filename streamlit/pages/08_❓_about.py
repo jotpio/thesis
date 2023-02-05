@@ -1,6 +1,7 @@
 import streamlit as st
 import io
 from deta import Deta  # Import Deta
+from PIL import Image
 
 
 
@@ -30,6 +31,9 @@ class AboutPage(Page):
                     """)
             st.write("The exhibit was developed by David James of IGB and Jonas Piotrowski of ScioI under the supervision of Dr. David Bierbach ")
             st.write("https://www.scienceofintelligence.de/")
+            image = Image.open('scioi_logo.png')
+            st.image(image, caption='SCIoI logo')
+            
         with col2:
             # show rack image
             rack_image_stream = self.deta_image_drive.get("rack1.jpg")
