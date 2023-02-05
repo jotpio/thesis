@@ -27,11 +27,12 @@ class DownloadPage(Page):
         #PAGE
         #
         st.info(f"Click the button to download data files for the date range: {self.data_model.start_date} to {self.data_model.end_date}")
-
+        
+        csv_toggle = st.checkbox("Save as .csv (other wise saved as .npy)", value=True)
         prepare = st.button("Prepare data for download")
         with st.spinner("Preparing ZIP file..."):
             if prepare:
-                zip_name, mem_zip = zip_data(self.data_model.start_date, self.data_model.end_date, self.data_model.dates_dict, self.data_model.only_challenges_loaded)
+                zip_name, mem_zip = zip_data(self.data_model.start_date, self.data_model.end_date, self.data_model.dates_dict, self.data_model.only_challenges_loaded, csv_toggle)
                 btn = st.download_button(
                     label="Download ZIP",
                     data=mem_zip,
@@ -41,7 +42,7 @@ class DownloadPage(Page):
 
 
 @st.cache(suppress_st_warning=True, allow_output_mutation=True, show_spinner=False)
-def zip_data(start_date, end_date, dates_dict, only_challenges_loaded):
+def zip_data(start_date, end_date, dates_dict, only_challenges_loaded, csv_toggle):
     # Create a ZipFile Object
     zip_name = f"{start_date}-{end_date}.zip"
     mem_zip = BytesIO()
@@ -49,14 +50,30 @@ def zip_data(start_date, end_date, dates_dict, only_challenges_loaded):
         # Add date files to the zip
         for key in dates_dict.keys():
             date = dates_dict[key]
-            if only_challenges_loaded:
-                file_name = f"challenges_dates_dict_{key}.npy"
+            
+            if not csv_toggle:
+                if only_challenges_loaded:
+                    file_name = f"challenges_dates_dict_{key}.npy"
+                else:
+                    file_name = f"dates_dict_{key}.npy"
+                print(f"Adding {key} to zip")
+                np.save(file_name, date, allow_pickle=True)
+                
+                # add file to zip 
+                zipObj.write(file_name)
+                os.remove(file_name) # remove locally after adding to zip
             else:
-                file_name = f"dates_dict_{key}.npy"
-            print(f"Adding {key} to zip")
-            np.save(file_name, date, allow_pickle=True)
-            zipObj.write(file_name)
-            os.remove(file_name) # remove locally after adding to zip
+                if only_challenges_loaded:
+                    file_name = f"challenges_dates_dict_{key}"
+                else:
+                    file_name = f"dates_dict_{key}"
+                file_name1, file_name2 = util.save_date_dict_to_csv(date, file_name)
+                # add file to zip 
+                zipObj.write(file_name1)
+                zipObj.write(file_name2)
+                os.remove(file_name1) # remove locally after adding to zip#
+                os.remove(file_name2)
+           
     return zip_name, mem_zip.getvalue()
 
 def remove_zip(file,zip_name):

@@ -5,19 +5,16 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/jotpio/behavior_HF">
-    <img src="images/fishmodel3.jpg" alt="Logo" width="80" height="120">
-  </a>
 
-<h3 align="center">RoboFish at HF</h3>
+<h2 align="center">Parsing and Analysis of Human Leadership Data</h2>
 
   <p align="center">
-    Code base of the RoboFish exhibit at Humboldt Forum 
+    Code base of the parsing, analysis and streamlit visualization of human leadership data generated at Humboldt Forum 
     <br />
     <br />
-    <a href="https://github.com/jotpio/behavior_HF/issues">Report Bug</a>
+    <a href="https://github.com/jotpio/thesis/issues">Report Bug</a>
     ·
-    <a href="https://github.com/jotpio/behavior_HF/issues">Request Feature</a>
+    <a href="https://github.com/jotpio/thesis/issues">Request Feature</a>
   </p>
 </div>
 
@@ -163,7 +160,7 @@ See `LICENSE` for more information.
 
 Jonas Piotrowski - marc.jonas.piotrowski@gmail.com
 
-Project Link: [https://github.com/jotpio/behavior_HF](https://github.com/jotpio/behavior_HF)
+Project Link: [https://github.com/jotpio/thesis](https://github.com/jotpio/thesis)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -182,16 +179,16 @@ Project Link: [https://github.com/jotpio/behavior_HF](https://github.com/jotpio/
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/jotpio/behavior_HF.svg?style=for-the-badge
-[contributors-url]: https://github.com/jotpio/behavior_HF/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/jotpio/behavior_HF.svg?style=for-the-badge
-[forks-url]: https://github.com/jotpio/behavior_HF/network/members
-[stars-shield]: https://img.shields.io/github/stars/jotpio/behavior_HF.svg?style=for-the-badge
-[stars-url]: https://github.com/jotpio/behavior_HF/stargazers
-[issues-shield]: https://img.shields.io/github/issues/jotpio/behavior_HF.svg?style=for-the-badge
-[issues-url]: https://github.com/jotpio/behavior_HF/issues
-[license-shield]: https://img.shields.io/github/license/jotpio/behavior_HF.svg?style=for-the-badge
-[license-url]: https://github.com/jotpio/behavior_HF/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/jotpio/thesis.svg?style=for-the-badge
+[contributors-url]: https://github.com/jotpio/thesis/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/jotpio/thesis.svg?style=for-the-badge
+[forks-url]: https://github.com/jotpio/thesis/network/members
+[stars-shield]: https://img.shields.io/github/stars/jotpio/thesis.svg?style=for-the-badge
+[stars-url]: https://github.com/jotpio/thesis/stargazers
+[issues-shield]: https://img.shields.io/github/issues/jotpio/thesis.svg?style=for-the-badge
+[issues-url]: https://github.com/jotpio/thesis/issues
+[license-shield]: https://img.shields.io/github/license/jotpio/thesis.svg?style=for-the-badge
+[license-url]: https://github.com/jotpio/thesis/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/jonas-piotrowski
 [product-screenshot]: images/screenshot.png

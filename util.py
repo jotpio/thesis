@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, date, timedelta
 import glob
 from deta import Deta
+import pandas as pd
 
 from datetime import date
 
@@ -560,3 +561,16 @@ def rolling_mean_data(array, window_size):
 def daterange(start_date, end_date):
     for n in range(int((end_date - start_date).days)):
         yield start_date + timedelta(n)
+        
+def save_date_dict_to_csv(date_dict, output_path):        
+    # add runs and run data as comments to csv
+    run_data = {'runs':date_dict['runs'], 'challenges':date_dict['challenges'], 'successful':date_dict['successful'], 'difficulties':date_dict['difficulties'], 'run_lengths':date_dict['run_lengths']}
+    df_run_out = pd.DataFrame.from_dict(run_data)
+    df_run_out.to_csv(f"{output_path}_run_metadata.csv", mode='w')
+        
+    # add timeseries data 
+    ts_data = {'timestamps':date_dict['timestamps'], 'positions':date_dict['positions'], 'orientation':date_dict['orientation'], 'rotation':date_dict['rotation'], 'fish':date_dict['fish']}
+    df_ts_out = pd.DataFrame.from_dict(ts_data)
+    df_ts_out.to_csv(f"{output_path}_time_series_data.csv", mode='w')
+    
+    return f"{output_path}_run_metadata.csv", f"{output_path}_time_series_data.csv"

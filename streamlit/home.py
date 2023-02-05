@@ -66,7 +66,7 @@ class MainPage(Page):
         
         # select date window
         current_start_date = self.data_model.limit_start_date if self.data_model.min_start_date is None else self.data_model.min_start_date
-        current_end_date = self.data_model.limit_end_date if self.data_model.max_end_date is None else self.data_model.max_end_date
+        current_end_date = "2021-11-24" if self.data_model.max_end_date is None else self.data_model.max_end_date
         col1, col2 = st.columns(2)
         with col1:
             selected_start_date = st.date_input(

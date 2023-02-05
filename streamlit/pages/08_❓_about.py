@@ -46,6 +46,9 @@ class AboutPage(Page):
         st.write('''
                 In addition to the streamlit source code there is also a jupyter notebook version in this github repository: https://github.com/jotpio/thesis 
                 ''')
+        st.write('''
+                You can find the simulation code base here: https://github.com/jotpio/behavior_HF
+                ''')
         st.caption("2022 - Developed by Jonas Piotrowski")
 
 
